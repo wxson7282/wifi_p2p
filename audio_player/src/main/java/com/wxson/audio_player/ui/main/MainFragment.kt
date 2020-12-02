@@ -39,6 +39,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             findViewById<ImageButton>(R.id.imageBtnPlay).setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnStop).setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnPause).setOnClickListener(this@MainFragment)
+            findViewById<ImageButton>(R.id.imageBtnMute).setOnClickListener(this@MainFragment)
         }
     }
 
@@ -107,6 +108,9 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             }
             R.id.imageBtnPause -> {
                 viewModel.pause()
+            }
+            R.id.imageBtnMute -> {
+                viewModel.mute()
             }
 
         }

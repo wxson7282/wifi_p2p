@@ -202,6 +202,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "pause()")
         player.pause()
     }
+
+    fun mute() {
+        Log.i(thisTag, "mute()")
+        player.mute()
+    }
     //endregion
 
     //region private methods

@@ -15,6 +15,7 @@ class Player {
     private var mediaFormat: MediaFormat? = null
     private var extractor: MediaExtractor? = null
     private var sampleTime: Long? = null
+    private var isMute: Boolean = false
 
     fun assetFilePlay(afd: AssetFileDescriptor) {
         Log.i(thisTag, "assetFilePlay")
@@ -58,6 +59,16 @@ class Player {
         if (dummyAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING ) {
             sampleTime = extractor?.sampleTime  //保存当前播放时间点
             releaseAll()
+        }
+    }
+
+    fun mute() {
+        if (isMute) {
+            dummyAudioTrack?.setVolume(1.0F)
+            isMute = false
+        } else {
+            dummyAudioTrack?.setVolume(0.0F)
+            isMute = true
         }
     }
 

@@ -76,4 +76,14 @@
         app:layout_constraintStart_toEndOf="@+id/imageBtnStop"
         app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup" />
 
+    <ImageButton
+        android:id="@+id/imageBtnMute"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:src="@drawable/ic_vol_mute"
+        app:layout_constraintStart_toEndOf="@+id/imageBtnPause"
+        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
