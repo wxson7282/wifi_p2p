@@ -14,13 +14,4 @@ object MediaDecoder {
         mediaCodec.configure(format, null, null, 0)
         return mediaCodec
     }
-
-    fun start(mediaCodec: MediaCodec) {
-        mediaCodec.start()
-    }
-
-    fun release(mediaCodec: MediaCodec) {
-        mediaCodec.stop()
-        mediaCodec.release()
-    }
 }
