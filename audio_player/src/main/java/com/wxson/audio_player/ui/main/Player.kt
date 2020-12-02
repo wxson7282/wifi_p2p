@@ -61,7 +61,7 @@ class Player {
         }
     }
 
-    private fun releaseAll() {
+    fun releaseAll() {
         dummyAudioTrack?.stop()
         dummyAudioTrack?.release()
         dummyAudioTrack = null

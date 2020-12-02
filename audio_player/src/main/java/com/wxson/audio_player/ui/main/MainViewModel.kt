@@ -107,6 +107,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         playerIntentService = null
         unregisterBroadcastReceiver()
         removeGroup()
+        player.releaseAll()
 
         super.onCleared()
     }
