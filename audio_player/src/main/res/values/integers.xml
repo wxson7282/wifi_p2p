@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="portNumberA">4786</integer>
+    <integer name="ServerSocketTimeout">30000</integer>
+    <integer name="ServerSocketPort">30000</integer>
+</resources>
