@@ -33,6 +33,7 @@ class Player {
                 // 选择音频轨
                 extractor!!.selectTrack(i)
                 if (sampleTime != null) {
+                    // 根据保存的sampleTime寻找播放起点
                     extractor!!.seekTo(sampleTime!!, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                 }
                 // 准备解码器
@@ -48,30 +49,26 @@ class Player {
 
     fun stop() {
         if (dummyAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING ) {
-            dummyAudioTrack?.stop()
-            dummyAudioTrack?.release()
-            dummyAudioTrack = null
-            decoder?.stop()
-            decoder?.release()
-            decoder = null
-            extractor?.release()
-            extractor = null
-            sampleTime = null
+            releaseAll()
+            sampleTime = null       // 清除播放时间点
         }
     }
 
     fun pause() {
         if (dummyAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING ) {
-            sampleTime = extractor?.sampleTime
-            dummyAudioTrack?.pause()
-            dummyAudioTrack?.stop()
-            dummyAudioTrack?.release()
-            dummyAudioTrack = null
-            decoder?.stop()
-            decoder?.release()
-            decoder = null
-            extractor?.release()
-            extractor = null
+            sampleTime = extractor?.sampleTime  //保存当前播放时间点
+            releaseAll()
         }
+    }
+
+    private fun releaseAll() {
+        dummyAudioTrack?.stop()
+        dummyAudioTrack?.release()
+        dummyAudioTrack = null
+        decoder?.stop()
+        decoder?.release()
+        decoder = null
+        extractor?.release()
+        extractor = null
     }
 }
