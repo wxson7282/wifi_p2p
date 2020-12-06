@@ -9,6 +9,8 @@ import com.wxson.p2p_comm.PcmTransferData
 
 class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
     private val thisTag = this.javaClass.simpleName
+    // to inform MainViewModel onOutputBufferAvailable
+    private lateinit var transferDataListener: ITransferDataListener
 
     val callback = object : MediaCodec.Callback() {
 
@@ -42,7 +44,8 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
                     val outputBuffer = codec.getOutputBuffer(bufferIndex)
                     val pcmData = ByteArray(bufferInfo.size)
                     outputBuffer?.get(pcmData)
-                    val pcmTransferData = PcmTransferData(codec.outputFormat, pcmData)
+                    // send out pcmTransferData
+                    transferDataListener.onTransferDataReady(PcmTransferData(codec.outputFormat, pcmData))
                     audioTrack.write(pcmData, 0, pcmData.size)
                     codec.releaseOutputBuffer(bufferIndex, false)
                 }
@@ -58,5 +61,9 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
         override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
             Log.i(thisTag, "onOutputFormatChanged")
         }
+    }
+
+    fun setTransferDataListener(listener: ITransferDataListener) {
+        transferDataListener = listener
     }
 }
