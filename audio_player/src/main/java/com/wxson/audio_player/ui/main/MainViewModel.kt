@@ -11,6 +11,7 @@ import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.WifiP2pManager.ChannelListener
 import android.os.IBinder
 import android.os.Looper
+import android.os.Message
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.AndroidViewModel
@@ -19,6 +20,7 @@ import androidx.lifecycle.MutableLiveData
 import com.wxson.p2p_comm.DirectBroadcastReceiver
 import com.wxson.p2p_comm.DirectBroadcastReceiver.Companion.getIntentFilter
 import com.wxson.p2p_comm.IDirectActionListener
+import com.wxson.p2p_comm.PcmTransferData
 import java.net.InetAddress
 
 class MainViewModel(application: Application) : AndroidViewModel(application), ChannelListener, IDirectActionListener {
@@ -75,6 +77,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
     }
 
+    private val transferDataListener = object : ITransferDataListener {
+        override fun onTransferDataReady(pcmTransferData: PcmTransferData) {
+            // inform ServerOutputThread of TransferDataReady by handler
+            val msg = Message()
+            msg.what = 0x333
+            msg.obj = pcmTransferData
+            playerIntentService?.serverThread?.handler?.sendMessage(msg)
+        }
+    }
+
     //region LiveData
     private var localMsgLiveData = MutableLiveData<String>()
     fun getLocalMsg(): LiveData<String> {
@@ -95,7 +107,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         application.registerReceiver(receiver, getIntentFilter())
         bindService(application)
-        player = Player()
+        player = Player(transferDataListener)
     }
 
     override fun onCleared() {
