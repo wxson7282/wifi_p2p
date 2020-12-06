@@ -8,7 +8,7 @@ import android.media.MediaFormat
 import android.util.Log
 import com.wxson.p2p_comm.AudioUtil
 
-class Player {
+class Player(private val transferDataListener: ITransferDataListener) {
     private val thisTag = this.javaClass.simpleName
     private var dummyAudioTrack: AudioTrack? = null
     private var decoder: MediaCodec? = null
@@ -38,7 +38,7 @@ class Player {
                     extractor!!.seekTo(sampleTime!!, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                 }
                 // 准备解码器
-                decoder = MediaDecoder.init(mime, mediaFormat!!, extractor!!, dummyAudioTrack!!)
+                initDecoder(mime)
                 // 启动dummy audioTrack
                 dummyAudioTrack!!.play()
                 // 启动解码器
@@ -82,4 +82,13 @@ class Player {
         extractor?.release()
         extractor = null
     }
+
+    private fun initDecoder(mime: String) {
+        decoder = MediaCodec.createDecoderByType(mime)
+        val decoderCallback = DecoderCallback(extractor!!, dummyAudioTrack!!)
+        decoderCallback.setTransferDataListener(transferDataListener)
+        decoder?.setCallback(decoderCallback.callback)
+        decoder?.configure(mediaFormat, null, null, 0)
+    }
+
 }
