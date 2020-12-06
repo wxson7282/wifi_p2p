@@ -81,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         override fun onTransferDataReady(pcmTransferData: PcmTransferData) {
             // inform ServerOutputThread of TransferDataReady by handler
             val msg = Message()
-            msg.what = 0x333
+            msg.what = 0x334
             msg.obj = pcmTransferData
             playerIntentService?.serverThread?.handler?.sendMessage(msg)
         }
