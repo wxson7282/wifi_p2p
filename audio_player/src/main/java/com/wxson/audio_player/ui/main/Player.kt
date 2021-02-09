@@ -13,37 +13,53 @@ class Player(private val transferDataListener: ITransferDataListener) {
     private var dummyAudioTrack: AudioTrack? = null
     private var decoder: MediaCodec? = null
     private var mediaFormat: MediaFormat? = null
-    private var extractor: MediaExtractor? = null
+    private var mediaExtractor: MediaExtractor? = null
     private var sampleTime: Long? = null
     private var isMute: Boolean = false
+    private var mime: String? = null
 
     fun assetFilePlay(afd: AssetFileDescriptor) {
         Log.i(thisTag, "assetFilePlay")
-
-
-        extractor = MediaExtractor()
-        extractor!!.setDataSource(afd)
-        val numTracks = extractor!!.trackCount
+        
+        mediaExtractor = MediaExtractor()
+        mediaExtractor!!.setDataSource(afd)
+        val numTracks = mediaExtractor!!.trackCount
         for (i in 0 until numTracks) {
-            val format = extractor!!.getTrackFormat(i)
-            val mime = format.getString(MediaFormat.KEY_MIME)
-            if (mime != null && mime.startsWith("audio")) {
+            val format = mediaExtractor!!.getTrackFormat(i)
+            mime = format.getString(MediaFormat.KEY_MIME)
+            if (mime != null && mime!!.startsWith("audio")) {
                 mediaFormat = format
                 // 建立dummy audioTrack
                 dummyAudioTrack = AudioUtil.initAudioTrack(mediaFormat!!)
                 // 选择音频轨
-                extractor!!.selectTrack(i)
+                mediaExtractor!!.selectTrack(i)
                 if (sampleTime != null) {
                     // 根据保存的sampleTime寻找播放起点
-                    extractor!!.seekTo(sampleTime!!, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                    mediaExtractor!!.seekTo(sampleTime!!, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                 }
                 // 准备解码器
-                initDecoder(mime)
+                initDecoder(mime!!)
                 // 启动dummy audioTrack
                 dummyAudioTrack!!.play()
                 // 启动解码器
                 decoder?.start()
                 break
+            }
+        }
+    }
+
+    fun pausePlay() {
+        when (dummyAudioTrack?.playState) {
+            AudioTrack.PLAYSTATE_PAUSED -> {
+                if (mime != null){
+                    initDecoder(mime!!)
+                    dummyAudioTrack!!.play()
+                    decoder?.start()
+                }
+            }
+            AudioTrack.PLAYSTATE_PLAYING -> {
+                dummyAudioTrack!!.pause()
+                releaseDecoder()
             }
         }
     }
@@ -57,18 +73,18 @@ class Player(private val transferDataListener: ITransferDataListener) {
 
     fun pause() {
         if (dummyAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING ) {
-            sampleTime = extractor?.sampleTime  //保存当前播放时间点
+            sampleTime = mediaExtractor?.sampleTime  //保存当前播放时间点
             releaseAll()
         }
     }
 
     fun mute() {
-        if (isMute) {
+        isMute = if (isMute) {
             dummyAudioTrack?.setVolume(1.0F)
-            isMute = false
+            false
         } else {
             dummyAudioTrack?.setVolume(0.0F)
-            isMute = true
+            true
         }
     }
 
@@ -79,13 +95,19 @@ class Player(private val transferDataListener: ITransferDataListener) {
         decoder?.stop()
         decoder?.release()
         decoder = null
-        extractor?.release()
-        extractor = null
+        mediaExtractor?.release()
+        mediaExtractor = null
+    }
+
+    private fun releaseDecoder() {
+        decoder?.stop()
+        decoder?.release()
+        decoder = null
     }
 
     private fun initDecoder(mime: String) {
         decoder = MediaCodec.createDecoderByType(mime)
-        val decoderCallback = DecoderCallback(extractor!!, dummyAudioTrack!!)
+        val decoderCallback = DecoderCallback(mediaExtractor!!, dummyAudioTrack!!)
         decoderCallback.setTransferDataListener(transferDataListener)
         decoder?.setCallback(decoderCallback.callback)
         decoder?.configure(mediaFormat, null, null, 0)

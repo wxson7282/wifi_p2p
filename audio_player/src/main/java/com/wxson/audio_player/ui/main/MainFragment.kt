@@ -8,8 +8,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.Toast
+import androidx.appcompat.content.res.AppCompatResources.getDrawable
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.wxson.audio_player.R
@@ -18,8 +21,8 @@ import pub.devrel.easypermissions.EasyPermissions
 class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnClickListener {
 
     private val runningTag = this.javaClass.simpleName
-
     private lateinit var viewModel: MainViewModel
+    private lateinit var imageConnectStatus: ImageView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,6 +43,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             findViewById<ImageButton>(R.id.imageBtnStop).setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnPause).setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnMute).setOnClickListener(this@MainFragment)
+            imageConnectStatus = findViewById(R.id.imageConnected)
         }
     }
 
@@ -49,6 +53,20 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
 
         //申请权限
         requestLocationPermission()
+        // registers observer for information from viewModel
+        val localMsgObserver: Observer<String> = Observer { localMsg -> showMsg(localMsg.toString()) }
+        viewModel.getLocalMsg().observe(viewLifecycleOwner, localMsgObserver)
+        val connectStatusObserver: Observer<Boolean> = Observer { isConnected -> connectStatusHandler(isConnected!!) }
+        viewModel.getConnectStatus().observe(viewLifecycleOwner, connectStatusObserver)
+    }
+
+    private fun connectStatusHandler(isConnected: Boolean) {
+        if (isConnected){
+            imageConnectStatus.setImageDrawable(getDrawable(requireContext(), R.drawable.ic_connected))
+        }
+        else{
+            imageConnectStatus.setImageDrawable(getDrawable(requireContext(), R.drawable.ic_disconnected))
+        }
     }
 
     //申请位置权限

@@ -42,8 +42,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             Log.i(thisTag, "onServiceConnected")
             val binder = service as PlayerIntentService.MyBinder
             playerIntentService = binder.playerIntentService
-            playerIntentService?.setStringTransferListener(stringTransferListener)
-            PlayerIntentService.startActionTcp(application)
+            playerIntentService?.setMessageListener(messageListener)
+//            PlayerIntentService.startActionTcp(application)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -51,20 +51,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
     }
 
-    private val stringTransferListener = object : IStringTransferListener {
-        override fun onStringArrived(arrivedString: String, clientInetAddress: InetAddress) {
-            Log.i(thisTag, "onStringArrived")
+    private val messageListener = object : IMessageListener {
+        override fun onRemoteMsgArrived(arrivedString: String, clientInetAddress: InetAddress) {
+            Log.i(thisTag, "onRemoteMsgArrived")
             localMsgLiveData.postValue("arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
             when (arrivedString) {
-                "remote_cmd_pause" -> {
+                "remote_cmd_pausePlay" -> {
+                    this@MainViewModel.pausePlay()
                 }
                 "remote_cmd_play" -> {
                 }
             }
         }
 
-        override fun onMsgTransfer(msgType: String, msg: String) {
-            Log.i(thisTag, "onMsgTransfer $msgType : $msg")
+        override fun onLocalMsgOccurred(msgType: String, msg: String) {
+            Log.i(thisTag, "onLocalMsgOccurred $msgType : $msg")
             when (msgType) {
                 "TcpSocketServiceStatus" -> {
                 }
@@ -79,11 +80,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private val transferDataListener = object : ITransferDataListener {
         override fun onTransferDataReady(pcmTransferData: PcmTransferData) {
-            // inform ServerOutputThread of TransferDataReady by handler
+            // inform ServerOutputThread of TransferDataReady by outputHandler
             val msg = Message()
             msg.what = 0x334
             msg.obj = pcmTransferData
-            playerIntentService?.serverThread?.handler?.sendMessage(msg)
+            playerIntentService?.serverThread?.outputHandler?.sendMessage(msg)
         }
     }
 
@@ -106,16 +107,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         channel = wifiP2pManager.initialize(application, Looper.getMainLooper(), this)
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         application.registerReceiver(receiver, getIntentFilter())
-        bindService(application)
+//        bindPlayerIntentService(application)
         player = Player(transferDataListener)
     }
 
     override fun onCleared() {
         Log.i(thisTag, "onCleared")
-        if(IsTcpSocketServiceOn){
+        if(isTcpSocketServiceOn){
             playerIntentService?.stopTcpSocketService()
         }
-        unbindServiceConnection()
+        unbindPlayerIntentService()
         playerIntentService = null
         unregisterBroadcastReceiver()
         removeGroup()
@@ -134,14 +135,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "onWifiP2pEnabled=$enabled")
     }
 
-    override fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo?) {
+    override fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo) {
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
-//        if (wifiP2pInfo != null) {
-//            if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
-//                bindService(app)
-//            }
-//        }
-        //service is started at init()
+        if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
+            bindPlayerIntentService(app)
+        }
+        if (!wifiP2pInfo.groupFormed) {
+            Log.i(thisTag, "未建组！")
+            localMsgLiveData.postValue("未建组！")
+        }else if(!wifiP2pInfo.isGroupOwner){
+            Log.i(thisTag, "本机不是组长！")
+            localMsgLiveData.postValue("本机不是组长！")
+        }
     }
 
     override fun onDisconnection() {
@@ -219,11 +224,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "mute()")
         player.mute()
     }
+
+    fun pausePlay() {
+        Log.i(thisTag, "pausePlay()")
+        player.pausePlay()
+    }
     //endregion
 
     //region private methods
-    private fun unbindServiceConnection() {
-        Log.i(thisTag, "unbindServiceConnection")
+    private fun unbindPlayerIntentService() {
+        Log.i(thisTag, "unbindPlayerIntentService")
         if (playerIntentService != null) {
             app.unbindService(serviceConnection)
         }
@@ -233,13 +243,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         app.unregisterReceiver(receiver)
     }
 
-    private fun bindService(application: Application) {
+    private fun bindPlayerIntentService(application: Application) {
         val intent = Intent(application, PlayerIntentService::class.java)
         application.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     //endregion
-
-
-    // TODO: Implement the ViewModel
 }
