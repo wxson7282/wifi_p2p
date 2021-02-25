@@ -1,6 +1,7 @@
 package com.wxson.audio_player.ui.main
 
 import android.app.IntentService
+import android.content.Context
 import android.content.Intent
 import android.os.*
 import android.util.Log
@@ -11,7 +12,7 @@ import java.io.ObjectOutputStream
 import java.net.ServerSocket
 import java.net.Socket
 
-//private const val ACTION_TCP = "com.wxson.audio_player.connect.action.TCP"
+private const val ACTION_TCP = "com.wxson.audio_player.connect.action.TCP"
 var isTcpSocketServiceOn = false  //switch for TcpSocketService ON/OFF
 private lateinit var messageListener: IMessageListener
 
@@ -22,11 +23,11 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
     var serverThread: ServerThread? = null
 
     override fun onHandleIntent(intent: Intent?) {
-//        when (intent?.action) {
-//            ACTION_TCP -> {
-//                handleActionTcp()
-//            }
-//        }
+        when (intent?.action) {
+            ACTION_TCP -> {
+                handleActionTcp()
+            }
+        }
         handleActionTcp()
     }
 
@@ -36,7 +37,7 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
     private fun handleActionTcp() {
         var clientSocket: Socket? = null
         var serverSocket: ServerSocket? = null
-        isTcpSocketServiceOn = true
+//        isTcpSocketServiceOn = true
         try {
             serverSocket = ServerSocket(resources.getInteger(R.integer.ServerSocketPort))
             Log.i(runningTag, "handleActionTcp: create ServerSocket")
@@ -59,22 +60,22 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
         }
     }
 
-//    companion object {
-//        /**
-//         * Starts this service to perform action Tcp. If
-//         * the service is already performing a task this action will be queued.
-//         *
-//         * @see IntentService
-//         */
-//        @JvmStatic
-//        fun startActionTcp(context: Context) {
-//            val intent = Intent(context, PlayerIntentService::class.java).apply {
-//                action = ACTION_TCP
-//                isTcpSocketServiceOn = true
-//            }
-//            context.startService(intent)
-//        }
-//    }
+    companion object {
+        /**
+         * Starts this service to perform action Tcp. If
+         * the service is already performing a task this action will be queued.
+         *
+         * @see IntentService
+         */
+        @JvmStatic
+        fun startActionTcp(context: Context) {
+            val intent = Intent(context, PlayerIntentService::class.java).apply {
+                action = ACTION_TCP
+                isTcpSocketServiceOn = true
+            }
+            context.startService(intent)
+        }
+    }
 
     inner class MyBinder: Binder(){
         val playerIntentService: PlayerIntentService = this@PlayerIntentService

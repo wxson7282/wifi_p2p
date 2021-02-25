@@ -1,6 +1,7 @@
 package com.wxson.audio_player.ui.main
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.*
 import android.content.pm.PackageManager
@@ -26,12 +27,13 @@ import java.net.InetAddress
 class MainViewModel(application: Application) : AndroidViewModel(application), ChannelListener, IDirectActionListener {
 
     private val thisTag = this.javaClass.simpleName
-    private val app: Application
+    private val app = application
     private val wifiP2pManager: WifiP2pManager
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
-    private val player: Player
+    private val player: Player<Any>
 
+    @SuppressLint("StaticFieldLeak")
     var playerIntentService: PlayerIntentService? = null
 
     /**
@@ -43,7 +45,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             val binder = service as PlayerIntentService.MyBinder
             playerIntentService = binder.playerIntentService
             playerIntentService?.setMessageListener(messageListener)
-//            PlayerIntentService.startActionTcp(application)
+            PlayerIntentService.startActionTcp(app)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -102,12 +104,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     init {
         Log.i(thisTag, "init")
-        app = application
-        wifiP2pManager =  application.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
-        channel = wifiP2pManager.initialize(application, Looper.getMainLooper(), this)
+        wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
+        channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
-        application.registerReceiver(receiver, getIntentFilter())
-//        bindPlayerIntentService(application)
+        app.registerReceiver(receiver, getIntentFilter())
+//        bindPlayerIntentService()
         player = Player(transferDataListener)
     }
 
@@ -138,7 +139,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     override fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo) {
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
         if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
-            bindPlayerIntentService(app)
+//            startPlayerIntentService()
+            bindPlayerIntentService()
         }
         if (!wifiP2pInfo.groupFormed) {
             Log.i(thisTag, "未建组！")
@@ -207,7 +209,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     fun play(afd: AssetFileDescriptor) {
         Log.i(thisTag, "play()")
-        player.assetFilePlay(afd)
+        if (player.setDataSource(afd)){
+            player.play()
+        }
     }
 
     fun stop() {
@@ -243,9 +247,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         app.unregisterReceiver(receiver)
     }
 
-    private fun bindPlayerIntentService(application: Application) {
-        val intent = Intent(application, PlayerIntentService::class.java)
-        application.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+//    private fun startPlayerIntentService() {
+//        if (playerIntentService != null) {
+//            app.startService(Intent(app, PlayerIntentService::class.java))
+//        }
+//    }
+
+    private fun bindPlayerIntentService() {
+        val intent = Intent(app, PlayerIntentService::class.java)
+        app.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     //endregion
