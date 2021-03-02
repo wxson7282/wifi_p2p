@@ -6,5 +6,5 @@ interface ITransferDataListener {
     /**
      *  to inform MainViewModel onOutputBufferAvailable in DecoderCallback
      */
-    fun onTransferDataReady(pcmTransferData: PcmTransferData)
+    fun onTransferDataReady(pcmTransferData: PcmTransferData?)
 }

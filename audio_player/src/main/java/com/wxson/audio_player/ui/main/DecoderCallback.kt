@@ -36,6 +36,8 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
 //            Log.i(thisTag, "onOutputBufferAvailable")
             try {
                 if ((bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM)) != 0) {
+                    // send end flag to client
+                    transferDataListener.onTransferDataReady(null)
                     // end of stream
                     extractor.release()
                     codec.stop()

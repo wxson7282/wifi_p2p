@@ -81,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     private val transferDataListener = object : ITransferDataListener {
-        override fun onTransferDataReady(pcmTransferData: PcmTransferData) {
+        override fun onTransferDataReady(pcmTransferData: PcmTransferData?) {
             // inform ServerOutputThread of TransferDataReady by outputHandler
             val msg = Message()
             msg.what = 0x334
