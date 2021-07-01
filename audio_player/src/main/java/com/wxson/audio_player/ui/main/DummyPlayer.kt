@@ -6,7 +6,7 @@ import android.util.Log
 import com.wxson.p2p_comm.AudioUtil
 import java.io.FileDescriptor
 
-class Player<in T>(private val transferDataListener: ITransferDataListener) {
+class DummyPlayer<in T>(private val transferDataListener: ITransferDataListener) {
     private val thisTag = this.javaClass.simpleName
     private lateinit var dummyAudioTrack: AudioTrack
     private lateinit var decoder: MediaCodec

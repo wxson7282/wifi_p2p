@@ -31,7 +31,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val wifiP2pManager: WifiP2pManager
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
-    private val player: Player<Any>
+    private val dummyPlayer: DummyPlayer<Any>
 
     @SuppressLint("StaticFieldLeak")
     var playerIntentService: PlayerIntentService? = null
@@ -109,7 +109,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         app.registerReceiver(receiver, getIntentFilter())
 //        bindPlayerIntentService()
-        player = Player(transferDataListener)
+        dummyPlayer = DummyPlayer(transferDataListener)
     }
 
     override fun onCleared() {
@@ -121,7 +121,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         playerIntentService = null
         unregisterBroadcastReceiver()
         removeGroup()
-        player.releaseAll()
+        dummyPlayer.releaseAll()
 
         super.onCleared()
     }
@@ -160,8 +160,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "onSelfDeviceAvailable=$wifiP2pDevice")
     }
 
-    override fun onPeersAvailable(wifiP2pDeviceList: Collection<WifiP2pDevice?>?) {
-        Log.i(thisTag, "onPeersAvailable=$wifiP2pDeviceList")
+    override fun onPeersAvailable(deviceList: Collection<WifiP2pDevice>) {
+        Log.i(thisTag, "onPeersAvailable=$deviceList")
     }
 
     override fun onP2pDiscoveryStopped() {
@@ -209,29 +209,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     fun play(afd: AssetFileDescriptor) {
         Log.i(thisTag, "play()")
-        if (player.setDataSource(afd)){
-            player.play()
+        if (dummyPlayer.setDataSource(afd)){
+            dummyPlayer.play()
         }
     }
 
     fun stop() {
         Log.i(thisTag, "stop()")
-        player.stop()
+        dummyPlayer.stop()
     }
 
     fun pause() {
         Log.i(thisTag, "pause()")
-        player.pause()
+        dummyPlayer.pause()
     }
 
     fun mute() {
         Log.i(thisTag, "mute()")
-        player.mute()
+        dummyPlayer.mute()
     }
 
     fun pausePlay() {
         Log.i(thisTag, "pausePlay()")
-        player.pausePlay()
+        dummyPlayer.pausePlay()
     }
     //endregion
 
