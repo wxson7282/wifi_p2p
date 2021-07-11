@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">audio_receiver</string>
+    <string name="localDeviceInfo">本设备信息</string>
+    <string name="wifiP2pInfo">Wifi-P2p信息</string>
+    <string name="DeviceName">设备名称：</string>
+    <string name="MacAddress">MAC地址：</string>
+    <string name="IpAddress">群主IP：</string>
+    <string name="DeviceStatus">设备状态：</string>
+    <string name="ConnectStatus">连接状态：</string>
+    <string name="IsGroupOwner">本设备是否群主：</string>
+    <string name="GroupFormed">群是否建立：</string>
+    <string name="DeviceList">设备列表</string>
+    <string name="Disconnect">断开连接</string>
+    <string name="menuDirectEnable">Wifi 开关</string>
+    <string name="menuDirectDiscover">搜索</string>
+    <string name="position_rationale">本APP运行必须取得位置控制权限</string>
+</resources>

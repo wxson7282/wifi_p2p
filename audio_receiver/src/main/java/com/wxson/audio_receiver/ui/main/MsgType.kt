@@ -1,0 +1,13 @@
+package com.wxson.audio_receiver.ui.main
+
+enum class MsgType {
+    MSG,
+    SHOW_CONNECT_STATUS,
+    SHOW_SELF_DEVICE_INFO,
+    SHOW_WIFI_P2P_INFO,
+    SHOW_LOADING_DIALOG,
+    DISMISS_LOADING_DIALOG,
+    CANCEL_LOADING_DIALOG,
+    SET_BUTTON_ENABLED,
+    SET_BUTTON_DISABLED;
+}
