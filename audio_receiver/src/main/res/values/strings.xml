@@ -4,6 +4,8 @@
     <string name="wifiP2pInfo">Wifi-P2p信息</string>
     <string name="DeviceName">设备名称：</string>
     <string name="MacAddress">MAC地址：</string>
+    <string name="RemoteDeviceName">对方设备名称：</string>
+    <string name="RemoteDeviceAddress">对方设备地址：</string>
     <string name="IpAddress">群主IP：</string>
     <string name="DeviceStatus">设备状态：</string>
     <string name="ConnectStatus">连接状态：</string>

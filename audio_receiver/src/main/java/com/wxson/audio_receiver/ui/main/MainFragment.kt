@@ -15,7 +15,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.wxson.audio_receiver.R
-import com.wxson.p2p_comm.ModelMsg
+import com.wxson.p2p_comm.ViewModelMsg
 import com.wxson.p2p_comm.WifiP2pUtil.getDeviceStatus
 import pub.devrel.easypermissions.EasyPermissions
 
@@ -29,6 +29,8 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private val runningTag = this.javaClass.simpleName
     private var tvMyDeviceName: TextView? = null
     private var tvMyDeviceMacAddress: TextView? = null
+    private var tvRemoteDeviceName: TextView? = null
+    private var tvRemoteDeviceAdress: TextView? = null
     private var tvGroupOwnerAddress: TextView? = null
     private var tvMyDeviceStatus: TextView? = null
     private var tvMyConnectStatus: TextView? = null
@@ -56,6 +58,8 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
                 // textView
                 tvMyDeviceName = findViewById(R.id.tvMyDeviceName)
                 tvMyDeviceMacAddress = findViewById(R.id.tvMyDeviceMacAddress)
+                tvRemoteDeviceName = findViewById(R.id.tvRemoteDeviceName)
+                tvRemoteDeviceAdress = findViewById(R.id.tvRemoteDeviceAddress)
                 tvGroupOwnerAddress = findViewById(R.id.tvGroupOwnerAddress)
                 tvMyDeviceStatus = findViewById(R.id.tvMyDeviceStatus)
                 tvMyConnectStatus = findViewById(R.id.tvMyConnectStatus)
@@ -74,8 +78,8 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
 
         viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
         // set modelMsgObserver
-        val modelMsgObserver: Observer<ModelMsg> = Observer { modelMsg -> modelMsgHandler(modelMsg) }
-        viewModel.getModelMsg().observe(this, modelMsgObserver)
+        val viewModelMsgObserver: Observer<ViewModelMsg> = Observer { modelMsg -> modelMsgHandler(modelMsg) }
+        viewModel.getModelMsg().observe(this, viewModelMsgObserver)
         // set adapter
         rvDeviceList?.adapter = viewModel.deviceAdapter
     }
@@ -105,22 +109,23 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         TODO("Not yet implemented")
     }
 
-    private fun modelMsgHandler(modelMsg: ModelMsg) {
-        when (modelMsg.type) {
-            MsgType.SHOW_CONNECT_STATUS.ordinal -> showConnectStatus(modelMsg.obj as Boolean)
-            MsgType.MSG.ordinal -> showMsg(modelMsg.obj as String)
-            MsgType.SHOW_SELF_DEVICE_INFO.ordinal -> showSelfDeviceInfo(modelMsg.obj as WifiP2pDevice)
-            MsgType.SHOW_WIFI_P2P_INFO.ordinal -> showWifiP2pInfo(modelMsg.obj as WifiP2pInfo)
-            MsgType.SHOW_LOADING_DIALOG.ordinal -> loadingDialog.show(modelMsg.obj as String, cancelable = true, canceledOnTouchOutside = false)
+    private fun modelMsgHandler(viewModelMsg: ViewModelMsg) {
+        when (viewModelMsg.type) {
+            MsgType.SHOW_CONNECT_STATUS.ordinal -> showConnectStatus(viewModelMsg.obj as Boolean)
+            MsgType.MSG.ordinal -> showMsg(viewModelMsg.obj as String)
+            MsgType.SHOW_SELF_DEVICE_INFO.ordinal -> showSelfDeviceInfo(viewModelMsg.obj as WifiP2pDevice)
+            MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal -> showRemoteDeviceInfo(viewModelMsg.obj as WifiP2pDevice)
+            MsgType.SHOW_WIFI_P2P_INFO.ordinal -> showWifiP2pInfo(viewModelMsg.obj as WifiP2pInfo?)
+            MsgType.SHOW_LOADING_DIALOG.ordinal -> loadingDialog.show(viewModelMsg.obj as String, cancelable = true, canceledOnTouchOutside = false)
             MsgType.DISMISS_LOADING_DIALOG.ordinal -> loadingDialog.dismiss()
             MsgType.CANCEL_LOADING_DIALOG.ordinal -> loadingDialog.cancel()
             MsgType.SET_BUTTON_ENABLED.ordinal -> {
-                when (modelMsg.obj as String) {
+                when (viewModelMsg.obj as String) {
                     "btnDisconnect" -> btnDisconnect?.isEnabled = true
                 }
             }
             MsgType.SET_BUTTON_DISABLED.ordinal -> {
-                when (modelMsg.obj as String) {
+                when (viewModelMsg.obj as String) {
                     "btnDisconnect" -> btnDisconnect?.isEnabled = false
                 }
             }
@@ -135,16 +140,27 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         imgConnectStatus?.setImageResource(if (connected) R.drawable.ic_connected else R.drawable.ic_disconnected)
     }
 
-    private fun showWifiP2pInfo(wifiP2pInfo: WifiP2pInfo) {
-        tvIsGroupOwner?.text = if (wifiP2pInfo.isGroupOwner) "是" else "否"
-        tvGroupOwnerAddress?.text = wifiP2pInfo.groupOwnerAddress.hostAddress
-        tvGroupFormed?.text = if (wifiP2pInfo.groupFormed) "是" else "否"
+    private fun showWifiP2pInfo(wifiP2pInfo: WifiP2pInfo?) {
+        if (wifiP2pInfo == null) {
+            tvIsGroupOwner?.text = ""
+            tvGroupOwnerAddress?.text = ""
+            tvGroupFormed?.text = ""
+        } else {
+            tvIsGroupOwner?.text = if (wifiP2pInfo.isGroupOwner) "是" else "否"
+            tvGroupOwnerAddress?.text = wifiP2pInfo.groupOwnerAddress.hostAddress
+            tvGroupFormed?.text = if (wifiP2pInfo.groupFormed) "是" else "否"
+        }
     }
 
     private fun showSelfDeviceInfo(myDevice: WifiP2pDevice) {
         tvMyDeviceName?.text = myDevice.deviceName
         tvMyDeviceMacAddress?.text = myDevice.deviceAddress
         tvMyDeviceStatus?.text = getDeviceStatus(myDevice.status)
+    }
+
+    private fun showRemoteDeviceInfo(remoteDevice: WifiP2pDevice) {
+        tvRemoteDeviceName?.text = remoteDevice.deviceName
+        tvRemoteDeviceAdress?.text = remoteDevice.deviceAddress
     }
 
     //申请位置权限

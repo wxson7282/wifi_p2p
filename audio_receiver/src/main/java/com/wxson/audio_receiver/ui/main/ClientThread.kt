@@ -24,7 +24,7 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
     // 定义向外输出的Handler对象
     class OutputHandler(private var clientThread: WeakReference<ClientThread>) : Handler() {
         override fun handleMessage(msg: Message) {
-            if (msg.what == 0x345){
+            if (msg.what == MsgType.SEND_MSG_TO_REMOTE.ordinal){
                 // 将客户端的文字信息写入网络
                 clientThread.get()?.objectOutputStream?.writeObject((msg.obj.toString()).toByteArray())
                 clientThread.get()?.objectOutputStream?.reset()
@@ -32,6 +32,8 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
             }
         }
     }
+
+    var outputHandler = Handler(Handler.Callback { false })
 
     override fun run() {
         Log.i(thisTag, "run")
@@ -51,7 +53,7 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
                             val pcmTransferData: PcmTransferData = inputObject
                             // pcmTransferData -> MainViewModel -> AudioTrack
                             val msg = Message()
-                            msg.what = 0x215
+                            msg.what = MsgType.PCM_TRANSFER_DATA.ordinal
                             msg.obj = pcmTransferData
                             mainHandler.sendMessage(msg)
                         }
@@ -60,7 +62,7 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
                             val arrivedString = String(inputObject)
                             Log.i(thisTag, "接收到ByteArray类 内容：${arrivedString}")
                             val msg = Message()
-                            msg.what = 0x123
+                            msg.what = MsgType.ARRIVED_STRING.ordinal
                             msg.obj = arrivedString
                             mainHandler.sendMessage(msg)
                         }
@@ -73,7 +75,8 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
             }
             // 为当前线程初始化Looper
             Looper.prepare()
-            OutputHandler(WeakReference(this))
+//            OutputHandler(WeakReference(this))
+            outputHandler = OutputHandler(WeakReference(this))
             // 启动Looper
             Looper.loop()
         }
@@ -123,7 +126,7 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
 
     private fun sendLocalMsg(localMsg: String){
         val msg = Message()
-        msg.what = 0x124
+        msg.what = MsgType.LOCAL_MSG.ordinal
         msg.obj = localMsg
         mainHandler.sendMessage(msg)
     }
