@@ -8,13 +8,13 @@ interface IDirectActionListener : ChannelListener {
 
     fun onWifiP2pEnabled(enabled: Boolean)
 
-    fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo?)
+    fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo)
 
     fun onDisconnection()
 
-    fun onSelfDeviceAvailable(wifiP2pDevice: WifiP2pDevice?)
+    fun onSelfDeviceAvailable(wifiP2pDevice: WifiP2pDevice)
 
-    fun onPeersAvailable(wifiP2pDeviceList: Collection<WifiP2pDevice?>?)
+    fun onPeersAvailable(deviceList: Collection<WifiP2pDevice>)
 
     fun onP2pDiscoveryStopped()
 }
