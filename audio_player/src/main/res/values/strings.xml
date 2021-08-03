@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">audio_player</string>
+    <string name="app_name">音频播放器</string>
     <string name="createGroup">建组</string>
     <string name="deleteGroup">删组</string>
     <string name="position_rationale">本APP运行必须取得位置控制权限</string>

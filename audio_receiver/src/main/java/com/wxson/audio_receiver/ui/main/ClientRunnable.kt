@@ -14,26 +14,27 @@ import java.net.UnknownHostException
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
-class ClientThread(private val mainHandler: Handler, private val serverIp: String, private val serverSocketPort: Int) : Runnable {
+class ClientRunnable(private val mainHandler: Handler, private val serverIp: String, private val serverSocketPort: Int) : Runnable {
     private val thisTag = this.javaClass.simpleName
-    lateinit var socket: Socket
+    private lateinit var socket: Socket
     // 该线程所处理的Socket所对应的输入出流
     private lateinit var objectOutputStream: ObjectOutputStream
     private lateinit var objectInputStream: ObjectInputStream
+    private lateinit var thisThread: Thread
 
-    // 定义向外输出的Handler对象
-    class OutputHandler(private var clientThread: WeakReference<ClientThread>) : Handler() {
+    // 定义线程的Handler对象，用以相应线程调用者发来的消息
+    class ThreadHandler(private var clientRunnable: WeakReference<ClientRunnable>) : Handler() {
         override fun handleMessage(msg: Message) {
             if (msg.what == MsgType.SEND_MSG_TO_REMOTE.ordinal){
                 // 将客户端的文字信息写入网络
-                clientThread.get()?.objectOutputStream?.writeObject((msg.obj.toString()).toByteArray())
-                clientThread.get()?.objectOutputStream?.reset()
-                Log.i(clientThread.get()?.thisTag, "handleMessage " + msg.obj.toString())
+                clientRunnable.get()?.objectOutputStream?.writeObject((msg.obj.toString()).toByteArray())
+                clientRunnable.get()?.objectOutputStream?.reset()
+                Log.i(clientRunnable.get()?.thisTag, "handleMessage " + msg.obj.toString())
             }
         }
     }
 
-    var outputHandler = Handler(Handler.Callback { false })
+    var threadHandler = Handler { false }
 
     override fun run() {
         Log.i(thisTag, "run")
@@ -42,11 +43,12 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
             sendLocalMsg("Connected")
             objectOutputStream = ObjectOutputStream(socket.getOutputStream())
             objectInputStream = ObjectInputStream(socket.getInputStream())
-            // 启动一条子线程来读取服务器响应的数据
-            thread {
+            // 启动子线程来读取服务器响应的数据
+            thisThread = thread {
+                // 读取Socket输入流中的内容
                 var inputObject: Any? = objectInputStream.readObject()
-                // 不断读取Socket输入流中的内容
-                while (inputObject != null) {
+                // 如果输入流为空 或者 当前线程被外部中断 则停止循环，终止子线程
+                while (inputObject != null && !Thread.currentThread().isInterrupted) {
                     when (inputObject) {
                         is PcmTransferData -> {     // pcm数据
                             Log.i(thisTag, "接收到PcmTransferData类")
@@ -70,13 +72,13 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
                             Log.i(thisTag, "接收到其它类 ${inputObject.javaClass.simpleName}")
                         }
                     }
+                    // 不断读取Socket输入流中的内容
                     inputObject = objectInputStream.readObject()
                 }
             }
             // 为当前线程初始化Looper
             Looper.prepare()
-//            OutputHandler(WeakReference(this))
-            outputHandler = OutputHandler(WeakReference(this))
+            threadHandler = ThreadHandler(WeakReference(this))
             // 启动Looper
             Looper.loop()
         }
@@ -103,11 +105,11 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
             Log.e(thisTag, "StreamCorruptedException")
             e.printStackTrace()
         }
-        catch (e: IOException){
+        catch (e: InterruptedException) {
+            Log.e(thisTag, "InterruptedException")
             e.printStackTrace()
-            exitProcess(1)
         }
-        catch(e:Exception){
+        catch (e: IOException){
             e.printStackTrace()
             exitProcess(1)
         }
@@ -119,7 +121,7 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
             objectOutputStream.close()
             objectInputStream.close()
             socket.close()
-            sendLocalMsg("Disconnected")
+            sendLocalMsg("ClientRunnable stopped")
         }
         TODO("Not yet implemented")
     }
@@ -130,4 +132,9 @@ class ClientThread(private val mainHandler: Handler, private val serverIp: Strin
         msg.obj = localMsg
         mainHandler.sendMessage(msg)
     }
+
+    fun closeSocket() {
+        socket.close()
+    }
+
 }

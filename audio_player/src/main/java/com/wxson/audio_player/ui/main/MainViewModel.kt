@@ -156,8 +156,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         connectStatusLiveData.postValue(false)
     }
 
-    override fun onSelfDeviceAvailable(wifiP2pDevice: WifiP2pDevice?) {
-        Log.i(thisTag, "onSelfDeviceAvailable=$wifiP2pDevice")
+    override fun onSelfDeviceAvailable(selfDevice: WifiP2pDevice) {
+        Log.i(thisTag, "onSelfDeviceAvailable=$selfDevice")
     }
 
     override fun onPeersAvailable(deviceList: Collection<WifiP2pDevice>) {

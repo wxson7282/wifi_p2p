@@ -22,6 +22,7 @@ import androidx.lifecycle.MutableLiveData
 import com.wxson.audio_receiver.R
 import com.wxson.p2p_comm.DirectBroadcastReceiver
 import com.wxson.p2p_comm.IDirectActionListener
+import com.wxson.p2p_comm.PcmTransferData
 import com.wxson.p2p_comm.ViewModelMsg
 import java.lang.ref.WeakReference
 import java.util.*
@@ -33,11 +34,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
     private var mainHandler: Handler
-    private lateinit var clientThread: ClientThread
+    private lateinit var clientRunnable: ClientRunnable
+    private lateinit var clientThread: Thread
     private var wifiP2pEnabled = false
     private val wifiP2pDeviceList = ArrayList<WifiP2pDevice>()
     val deviceAdapter: DeviceAdapter
     private lateinit var wifiP2pDevice: WifiP2pDevice
+    private var pcmPlayer: PcmPlayer? = null
 
     //region LiveData
     private val msgLiveData = MutableLiveData<ViewModelMsg>()
@@ -46,6 +49,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     }
     //endregion
 
+    //region Handler
     class MainHandler(private var viewModel: WeakReference<MainViewModel>) : Handler() {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
@@ -53,14 +57,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
                     viewModel.get()?.msgLiveData?.postValue(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
                 MsgType.LOCAL_MSG.ordinal ->
                     viewModel.get()?.msgLiveData?.postValue(ViewModelMsg(MsgType.MSG.ordinal, "local msg:" + msg.obj.toString()))
-                MsgType.PCM_TRANSFER_DATA.ordinal -> TODO("Not yet implemented")
+                MsgType.PCM_TRANSFER_DATA.ordinal -> viewModel.get()?.playPcmData(msg.obj as PcmTransferData)
             }
         }
     }
+    //endregion
 
+    //region init & onCleared
     init {
         Log.i(thisTag, "init")
-//        mainHandler = MainHandler(WeakReference(this))
         wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
@@ -71,7 +76,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
             override fun onItemClick(position: Int) {
                 wifiP2pDevice = wifiP2pDeviceList[position]
                 msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, wifiP2pDevice.deviceName + "将要连接"))
-
                 connect()
             }
         })
@@ -79,12 +83,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     }
 
     override fun onCleared() {
-        Thread(clientThread).interrupt()
-        clientThread.socket.close()
+        clientRunnable.closeSocket()
+        clientThread.interrupt()
+        
         app.unregisterReceiver(receiver)
         super.onCleared()
     }
+    //endregion++
 
+    //region public method
     fun startWifiSetting() {
         app.applicationContext.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS))
     }
@@ -115,10 +122,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
         })
     }
 
+    fun disconnect() {
+        //向对方发送连接断开消息
+        val msg = Message()
+        msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
+        msg.obj = "disconnecting"
+        clientRunnable.threadHandler.sendMessage(msg)
+        //阻塞其他綫程300毫秒，防止消息发送前切断连接
+        clientThread.join(300)
+        //
+        wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
+            override fun onFailure(reasonCode: Int) {
+                Log.i(thisTag, "disconnect onFailure:$reasonCode")
+            }
+
+            override fun onSuccess() {
+                Log.i(thisTag, "disconnect onSuccess")
+                msgLiveData.postValue(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
+            }
+        })
+    }
+    //endregion
+
     //region private method
     private fun startClientThread(hostIp: String) {
-        clientThread = ClientThread(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
-        Thread(clientThread).start()
+        clientRunnable = ClientRunnable(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
+        clientThread = Thread(clientRunnable)
+        clientThread.start()
     }
 
     private fun connect() {
@@ -158,9 +188,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     }
 
     private fun clearWifiP2pDeviceList() {
-        clearWifiP2pDeviceList()
+        wifiP2pDeviceList.clear()
+        deviceAdapter.notifyDataSetChanged()
     }
 
+    private fun playPcmData(pcmTransferData: PcmTransferData) {
+        if (pcmPlayer == null) {
+            pcmPlayer = PcmPlayer(pcmTransferData.mediaFormat)
+        }
+        pcmPlayer?.writePcmData(pcmTransferData.pcmData)
+    }
     //endregion
 
     //region wifi p2p events
@@ -183,24 +220,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
             startClientThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
             //向对方发送连接成功消息
             val msg = Message()
-            msg.what = 0x345
             msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
             msg.obj = "connected"
-            clientThread.outputHandler.sendMessage(msg)
+            clientRunnable.threadHandler.sendMessage(msg)
 
         }
-        //***********************
-
-
-
-
-
-        wifiP2pDeviceList.clear()
-        deviceAdapter.notifyDataSetChanged()
-
-
-
-        TODO("Not yet implemented")
+//        wifiP2pDeviceList.clear()
+//        deviceAdapter.notifyDataSetChanged()
     }
 
     override fun onDisconnection() {
@@ -242,5 +268,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     }
     //endregion
 
-    // TODO: Implement the ViewModel
 }

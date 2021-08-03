@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">audio_receiver</string>
+    <string name="app_name">音频接收器</string>
     <string name="localDeviceInfo">本设备信息</string>
     <string name="wifiP2pInfo">Wifi-P2p信息</string>
     <string name="DeviceName">设备名称：</string>

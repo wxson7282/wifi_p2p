@@ -12,7 +12,7 @@ interface IDirectActionListener : ChannelListener {
 
     fun onDisconnection()
 
-    fun onSelfDeviceAvailable(wifiP2pDevice: WifiP2pDevice)
+    fun onSelfDeviceAvailable(selfDevice: WifiP2pDevice)
 
     fun onPeersAvailable(deviceList: Collection<WifiP2pDevice>)
 

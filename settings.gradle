@@ -1,3 +1,4 @@
+include ':audio_receiver'
 include ':p2p_comm'
 include ':audio_player'
 rootProject.name = "wifi p2p"
