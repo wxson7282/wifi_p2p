@@ -118,8 +118,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
                 viewModel.removeGroup()
             }
             R.id.imageBtnPlay -> {
-                val afd = resources.openRawResourceFd(R.raw.subaru)
-                viewModel.play(afd)
+                viewModel.play(getString(R.string.sample_music_name))
             }
             R.id.imageBtnStop -> {
                 viewModel.stop()

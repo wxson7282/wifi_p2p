@@ -22,7 +22,7 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
     private lateinit var objectInputStream: ObjectInputStream
     private lateinit var thisThread: Thread
 
-    // 定义线程的Handler对象，用以相应线程调用者发来的消息
+    // 定义线程的Handler对象，用以响应线程调用者发来的消息
     class ThreadHandler(private var clientRunnable: WeakReference<ClientRunnable>) : Handler() {
         override fun handleMessage(msg: Message) {
             if (msg.what == MsgType.SEND_MSG_TO_REMOTE.ordinal){
@@ -91,8 +91,8 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
             sendLocalMsg("服务器连接失败！！")
         }
         catch (e: ConnectException){
-            Log.e(thisTag, "服务器未启动！！")
-            sendLocalMsg("服务器未启动！！")
+            Log.e(thisTag, "服务器端无响应！！")
+            sendLocalMsg("服务器端无响应！！")
         }
         catch (e: EOFException){
             Log.e(thisTag, "EOFException")

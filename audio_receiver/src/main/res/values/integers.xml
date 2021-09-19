@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <integer name="portNumber">4786</integer>
+    <integer name="portNumber">30000</integer>
 </resources>

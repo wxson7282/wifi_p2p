@@ -76,10 +76,10 @@ class DirectBroadcastReceiver(
                 val networkInfo = intent.getParcelableExtra<NetworkInfo>(WifiP2pManager.EXTRA_NETWORK_INFO)
                 if (networkInfo != null && networkInfo.isConnected) {
                     wifiP2pManager.requestConnectionInfo(channel) { wifiP2pInfo -> directActionListener.onConnectionInfoAvailable(wifiP2pInfo) }
-                    Log.e(runningTag, "已连接p2p设备")
+                    Log.i(runningTag, "已连接p2p设备")
                 } else {
+                    Log.i(runningTag, "与p2p设备已断开连接")
                     directActionListener.onDisconnection()
-                    Log.e(runningTag, "与p2p设备已断开连接")
                 }
             }
             // indicating that this device details have changed

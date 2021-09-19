@@ -4,13 +4,13 @@ import android.Manifest
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
+import android.net.wifi.p2p.WifiP2pManager.ChannelListener
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
@@ -27,7 +27,8 @@ import com.wxson.p2p_comm.ViewModelMsg
 import java.lang.ref.WeakReference
 import java.util.*
 
-class MainViewModel(application: Application) : AndroidViewModel(application), WifiP2pManager.ChannelListener, IDirectActionListener {
+class MainViewModel(application: Application) : AndroidViewModel(application), ChannelListener, IDirectActionListener {
+
     private val thisTag = this.javaClass.simpleName
     private val app = application
     private val wifiP2pManager: WifiP2pManager
@@ -54,9 +55,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 MsgType.ARRIVED_STRING.ordinal ->
-                    viewModel.get()?.msgLiveData?.postValue(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
+                    viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
                 MsgType.LOCAL_MSG.ordinal ->
-                    viewModel.get()?.msgLiveData?.postValue(ViewModelMsg(MsgType.MSG.ordinal, "local msg:" + msg.obj.toString()))
+                    viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "local msg:" + msg.obj.toString()))
                 MsgType.PCM_TRANSFER_DATA.ordinal -> viewModel.get()?.playPcmData(msg.obj as PcmTransferData)
             }
         }
@@ -75,7 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
         deviceAdapter.setClickListener(object : DeviceAdapter.OnClickListener {
             override fun onItemClick(position: Int) {
                 wifiP2pDevice = wifiP2pDeviceList[position]
-                msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, wifiP2pDevice.deviceName + "将要连接"))
+                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, wifiP2pDevice.deviceName + "将要连接"))
                 connect()
             }
         })
@@ -91,33 +92,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     }
     //endregion++
 
-    //region public method
-    fun startWifiSetting() {
-        app.applicationContext.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS))
-    }
 
+    //region public method
     fun startDiscoverPeers() {
         if (!wifiP2pEnabled) {
-            msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "需要先打开Wifi"))
+            sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "需要先打开Wifi"))
             return
         }
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_LOADING_DIALOG.ordinal, "正在搜索附近设备"))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_LOADING_DIALOG.ordinal, "正在搜索附近设备"))
         clearWifiP2pDeviceList()
         //搜寻附近带有 Wi-Fi P2P 的设备
         if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.i(thisTag, "需要申请ACCESS_FINE_LOCATION权限")
             // Do not have permissions, request them now
-            msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "需要申请ACCESS_FINE_LOCATION权限"))
+            sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "需要申请ACCESS_FINE_LOCATION权限"))
             return
         }
         wifiP2pManager.discoverPeers(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
-                msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "discoverPeers success"))
+                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "discoverPeers success"))
             }
 
             override fun onFailure(reasonCode: Int) {
-                msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "discoverPeers failure"))
-                msgLiveData.postValue(ViewModelMsg(MsgType.CANCEL_LOADING_DIALOG.ordinal, ""))
+                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "discoverPeers failure"))
+                sendMsgLiveData(ViewModelMsg(MsgType.CANCEL_LOADING_DIALOG.ordinal, ""))
             }
         })
     }
@@ -138,7 +136,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
 
             override fun onSuccess() {
                 Log.i(thisTag, "disconnect onSuccess")
-                msgLiveData.postValue(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
+                sendMsgLiveData(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
             }
         })
     }
@@ -146,6 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
 
     //region private method
     private fun startClientThread(hostIp: String) {
+        Log.i(thisTag, "startClientThread")
         clientRunnable = ClientRunnable(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
         clientThread = Thread(clientRunnable)
         clientThread.start()
@@ -155,24 +154,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
         val config = WifiP2pConfig()
         config.deviceAddress = wifiP2pDevice.deviceAddress
         config.wps.setup = WpsInfo.PBC
-        msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "正在连接"))
+        sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "正在连接"))
         // permission check
         if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.i(thisTag, "需要申请ACCESS_FINE_LOCATION权限")
             // Do not have permissions, request them now
-            msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "需要申请ACCESS_FINE_LOCATION权限"))
+            sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "需要申请ACCESS_FINE_LOCATION权限"))
             return
         }
         wifiP2pManager.connect(channel, config, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
-                msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, true))
+                sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, true))
                 Log.i(thisTag, "connect onSuccess")
             }
 
             override fun onFailure(reason: Int) {
-                msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
+                sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
                 Log.e(thisTag, "连接失败 ${getGetConnectFailureReason(reason)}")
-                msgLiveData.postValue(ViewModelMsg(MsgType.DISMISS_LOADING_DIALOG.ordinal, ""))
+                sendMsgLiveData(ViewModelMsg(MsgType.DISMISS_LOADING_DIALOG.ordinal, ""))
             }
         })
     }
@@ -198,6 +197,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
         }
         pcmPlayer?.writePcmData(pcmTransferData.pcmData)
     }
+
+    private fun isMainThread() : Boolean {
+        return Thread.currentThread() == Looper.getMainLooper().thread
+    }
+
+    private fun sendMsgLiveData(viewModelMsg: ViewModelMsg) {
+        if (isMainThread()) {
+            msgLiveData.value = viewModelMsg
+        } else {
+            msgLiveData.postValue(viewModelMsg)
+        }
+    }
     //endregion
 
     //region wifi p2p events
@@ -209,11 +220,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
     override fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo) {
         Log.i(thisTag, "onConnectionInfoAvailable")
         //关闭“连接中”信息显示
-        msgLiveData.postValue(ViewModelMsg(MsgType.DISMISS_LOADING_DIALOG.ordinal, ""))
+        sendMsgLiveData(ViewModelMsg(MsgType.DISMISS_LOADING_DIALOG.ordinal, ""))
         //显示WifiP2pInfo
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, wifiP2pInfo))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, wifiP2pInfo))
         //显示选中的wifiP2pDevice
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, wifiP2pDevice))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, wifiP2pDevice))
         //判断本机为非群主，且群已经建立
         if (wifiP2pInfo.groupFormed && !wifiP2pInfo.isGroupOwner) {
             //建立并启动ClientThread
@@ -231,17 +242,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
 
     override fun onDisconnection() {
         Log.i(thisTag, "onDisconnection")
-        msgLiveData.postValue(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
-        msgLiveData.postValue(ViewModelMsg(MsgType.MSG.ordinal, "已断开连接"))
+        sendMsgLiveData(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
+        sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "已断开连接"))
         clearWifiP2pDeviceList()
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, null))
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_SELF_DEVICE_INFO.ordinal, null))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, null))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_SELF_DEVICE_INFO.ordinal, null))
     }
 
     override fun onSelfDeviceAvailable(selfDevice: WifiP2pDevice) {
-        Log.i(thisTag, "onPeersAvailable" )
-        msgLiveData.postValue(ViewModelMsg(MsgType.SHOW_SELF_DEVICE_INFO.ordinal, selfDevice))
+        Log.i(thisTag, "onSelfDeviceAvailable" )
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_SELF_DEVICE_INFO.ordinal, selfDevice))
     }
 
     override fun onPeersAvailable(deviceList: Collection<WifiP2pDevice>) {
@@ -249,7 +260,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), W
         wifiP2pDeviceList.clear()
         wifiP2pDeviceList.addAll(deviceList)
         deviceAdapter.notifyDataSetChanged()
-        msgLiveData.postValue(ViewModelMsg(MsgType.CANCEL_LOADING_DIALOG.ordinal, ""))
+        sendMsgLiveData(ViewModelMsg(MsgType.CANCEL_LOADING_DIALOG.ordinal, ""))
         if (wifiP2pDeviceList.size == 0) {
             Log.e(thisTag, "No devices found")
         }

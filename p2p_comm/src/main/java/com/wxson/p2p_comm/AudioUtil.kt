@@ -1,15 +1,14 @@
 package com.wxson.p2p_comm
 
-import android.content.res.AssetFileDescriptor
 import android.media.*
 
 object AudioUtil {
     /**
-     * get audio tracks from media in the resource
+     * get audio tracks from media in the file
      */
-    fun getAudioTracks(afd: AssetFileDescriptor) : MutableList<MediaFormat> {
+    fun getAudioTracks(filePath: String) : MutableList<MediaFormat> {
         val mediaExtractor = MediaExtractor()
-        mediaExtractor.setDataSource(afd)
+        mediaExtractor.setDataSource(filePath)
         val numTracks = mediaExtractor.trackCount
         val trackFormats: MutableList<MediaFormat> = mutableListOf()
         for (i in 0 until numTracks) {

@@ -1,6 +1,5 @@
 package com.wxson.audio_player.ui.main
 
-import android.content.res.AssetFileDescriptor
 import android.media.*
 import android.util.Log
 import com.wxson.p2p_comm.AudioUtil
@@ -23,9 +22,9 @@ class DummyPlayer<in T>(private val transferDataListener: ITransferDataListener)
         var returnValue = true
         mediaExtractor = MediaExtractor()
         when (dataSource) {
-            is AssetFileDescriptor -> {
-                mediaExtractor!!.setDataSource(dataSource)
-            }
+//            is AssetFileDescriptor -> {
+//                mediaExtractor!!.setDataSource(dataSource)
+//            }
             is FileDescriptor -> {
                 mediaExtractor!!.setDataSource(dataSource)
             }

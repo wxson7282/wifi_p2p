@@ -1,13 +1,13 @@
 package com.wxson.audio_receiver.ui.main
 
+import android.content.Intent
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.os.Bundle
+import android.provider.Settings
 import android.view.*
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -46,35 +46,41 @@ class MainFragment : Fragment(), View.OnClickListener {
         return inflater.inflate(R.layout.main_fragment, container, false)
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        view.apply {
+            // toolbar
+            setHasOptionsMenu(true)
+            (activity as AppCompatActivity).setSupportActionBar(findViewById(R.id.toolbar))
+            // button
+            findViewById<Button>(R.id.btnDisconnect)?.setOnClickListener(this@MainFragment)
+            // textView
+            tvMyDeviceName = findViewById(R.id.tvMyDeviceName)
+            tvMyDeviceMacAddress = findViewById(R.id.tvMyDeviceMacAddress)
+            tvRemoteDeviceName = findViewById(R.id.tvRemoteDeviceName)
+            tvRemoteDeviceAdress = findViewById(R.id.tvRemoteDeviceAddress)
+            tvGroupOwnerAddress = findViewById(R.id.tvGroupOwnerAddress)
+            tvMyDeviceStatus = findViewById(R.id.tvMyDeviceStatus)
+//                tvMyConnectStatus = findViewById(R.id.tvMyConnectStatus)
+            tvIsGroupOwner = findViewById(R.id.tvIsGroupOwner)
+            tvGroupFormed = findViewById(R.id.tvGroupFormed)
+            // imageView
+            imgConnectStatus = findViewById(R.id.imgConnectStatus)
+            // RecyclerView
+            rvDeviceList = findViewById(R.id.rvDeviceList)
+            // Button
+            btnDisconnect = findViewById(R.id.btnDisconnect)
+            // LoadingDialog
+            loadingDialog = LoadingDialog(this.context)
+        }
+    }
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        view?.let {
-            it.apply {
-                // button
-                findViewById<Button>(R.id.btnDisconnect)?.setOnClickListener(this@MainFragment)
-                // textView
-                tvMyDeviceName = findViewById(R.id.tvMyDeviceName)
-                tvMyDeviceMacAddress = findViewById(R.id.tvMyDeviceMacAddress)
-                tvRemoteDeviceName = findViewById(R.id.tvRemoteDeviceName)
-                tvRemoteDeviceAdress = findViewById(R.id.tvRemoteDeviceAddress)
-                tvGroupOwnerAddress = findViewById(R.id.tvGroupOwnerAddress)
-                tvMyDeviceStatus = findViewById(R.id.tvMyDeviceStatus)
-//                tvMyConnectStatus = findViewById(R.id.tvMyConnectStatus)
-                tvIsGroupOwner = findViewById(R.id.tvIsGroupOwner)
-                tvGroupFormed = findViewById(R.id.tvGroupFormed)
-                // imageView
-                imgConnectStatus = findViewById(R.id.imgConnectStatus)
-                // RecyclerView
-                rvDeviceList = findViewById(R.id.rvDeviceList)
-                // Button
-                btnDisconnect = findViewById(R.id.btnDisconnect)
-                // LoadingDialog
-                loadingDialog = LoadingDialog(this.context)
-            }
-        }
+        val androidViewModelFactory = ViewModelProvider.AndroidViewModelFactory.getInstance(this.activity!!.application)
+        viewModel = ViewModelProvider(this, androidViewModelFactory).get(MainViewModel::class.java)
 
-        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
         // set modelMsgObserver
         val viewModelMsgObserver: Observer<ViewModelMsg> = Observer { modelMsg -> modelMsgHandler(modelMsg) }
         viewModel.getModelMsg().observe(this, viewModelMsgObserver)
@@ -84,14 +90,13 @@ class MainFragment : Fragment(), View.OnClickListener {
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.menu, menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menuDirectEnable -> {
-                viewModel.startWifiSetting()
+                startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
             }
             R.id.menuDirectDiscover -> {
                 viewModel.startDiscoverPeers()
@@ -112,7 +117,7 @@ class MainFragment : Fragment(), View.OnClickListener {
         when (viewModelMsg.type) {
             MsgType.SHOW_CONNECT_STATUS.ordinal -> showConnectStatus(viewModelMsg.obj as Boolean)
             MsgType.MSG.ordinal -> showMsg(viewModelMsg.obj as String)
-            MsgType.SHOW_SELF_DEVICE_INFO.ordinal -> showSelfDeviceInfo(viewModelMsg.obj as WifiP2pDevice)
+            MsgType.SHOW_SELF_DEVICE_INFO.ordinal -> showSelfDeviceInfo(viewModelMsg.obj as WifiP2pDevice?)
             MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal -> showRemoteDeviceInfo(viewModelMsg.obj as WifiP2pDevice)
             MsgType.SHOW_WIFI_P2P_INFO.ordinal -> showWifiP2pInfo(viewModelMsg.obj as WifiP2pInfo?)
             MsgType.SHOW_LOADING_DIALOG.ordinal -> loadingDialog.show(viewModelMsg.obj as String, cancelable = true, canceledOnTouchOutside = false)
@@ -136,7 +141,13 @@ class MainFragment : Fragment(), View.OnClickListener {
     }
 
     private fun showConnectStatus(connected: Boolean) {
-        imgConnectStatus?.setImageResource(if (connected) R.drawable.ic_connected else R.drawable.ic_disconnected)
+        if (connected) {
+            imgConnectStatus?.setImageResource(R.drawable.ic_connected)
+            btnDisconnect?.isEnabled = true
+        } else {
+            imgConnectStatus?.setImageResource(R.drawable.ic_disconnected)
+            btnDisconnect?.isEnabled = false
+        }
     }
 
     private fun showWifiP2pInfo(wifiP2pInfo: WifiP2pInfo?) {
@@ -151,10 +162,14 @@ class MainFragment : Fragment(), View.OnClickListener {
         }
     }
 
-    private fun showSelfDeviceInfo(myDevice: WifiP2pDevice) {
+    private fun showSelfDeviceInfo(myDevice: WifiP2pDevice?) = if (myDevice != null) {
         tvMyDeviceName?.text = myDevice.deviceName
         tvMyDeviceMacAddress?.text = myDevice.deviceAddress
         tvMyDeviceStatus?.text = getDeviceStatus(myDevice.status)
+    } else {
+        tvMyDeviceName?.text = ""
+        tvMyDeviceMacAddress?.text = ""
+        tvMyDeviceStatus?.text = ""
     }
 
     private fun showRemoteDeviceInfo(remoteDevice: WifiP2pDevice) {

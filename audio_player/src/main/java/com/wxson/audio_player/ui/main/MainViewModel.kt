@@ -214,6 +214,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
     }
 
+    fun play(fileName: String) {
+        Log.i(thisTag, "play()")
+        val pathName: String = app.cacheDir.path
+            if (dummyPlayer.setDataSource("$pathName/$fileName"))
+                dummyPlayer.play()
+    }
+
     fun stop() {
         Log.i(thisTag, "stop()")
         dummyPlayer.stop()

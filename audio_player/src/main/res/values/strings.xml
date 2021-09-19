@@ -4,6 +4,7 @@
     <string name="deleteGroup">删组</string>
     <string name="position_rationale">本APP运行必须取得位置控制权限</string>
     <string name="title_activity_test">TestActivity</string>
+    <string name="sample_music_name">dabieshan.mp3</string>
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>

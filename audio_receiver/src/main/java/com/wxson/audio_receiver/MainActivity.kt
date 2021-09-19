@@ -1,7 +1,6 @@
 package com.wxson.audio_receiver
 
 import android.Manifest
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -22,9 +21,7 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks {
                 .commitNow()
         }
         //申请定位权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            requestLocationPermission()
-        }
+        requestLocationPermission()
     }
 
     //申请位置权限

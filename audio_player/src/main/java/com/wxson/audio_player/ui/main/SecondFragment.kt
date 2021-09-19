@@ -33,18 +33,20 @@ class SecondFragment : Fragment() {
         }
 
         view.findViewById<Button>(R.id.btnGetAudioTracks).setOnClickListener {
-            val afd = resources.openRawResourceFd(R.raw.subaru)
-            val audioTracks = AudioUtil.getAudioTracks(afd)
-            textView.apply {
-                text = ""
-                append("resource name = R.raw.subaru\n")
-                append("audio tracks size = ${audioTracks.size}\n")
-                for (i in 0 until audioTracks.size) {
-                    append("MIME = ${audioTracks[i].getString(MediaFormat.KEY_MIME)}\n")
-                    append("CHANNEL_COUNT = ${audioTracks[i].getInteger(MediaFormat.KEY_CHANNEL_COUNT)}\n")
-                    append("BIT_RATE = ${audioTracks[i].getInteger(MediaFormat.KEY_BIT_RATE)}\n")
-                    append("DURATION = ${audioTracks[i].getLong(MediaFormat.KEY_DURATION)}\n")
-                    append("KEY_SAMPLE_RATE = ${audioTracks[i].getInteger(MediaFormat.KEY_SAMPLE_RATE)}\n")
+            val pathName: String? = this.activity?.application?.cacheDir?.path
+            if (pathName != null) {
+                val audioTracks = AudioUtil.getAudioTracks(getString(R.string.sample_music_name))
+                textView.apply {
+                    text = ""
+                    append("resource name = R.raw.subaru\n")
+                    append("audio tracks size = ${audioTracks.size}\n")
+                    for (i in 0 until audioTracks.size) {
+                        append("MIME = ${audioTracks[i].getString(MediaFormat.KEY_MIME)}\n")
+                        append("CHANNEL_COUNT = ${audioTracks[i].getInteger(MediaFormat.KEY_CHANNEL_COUNT)}\n")
+                        append("BIT_RATE = ${audioTracks[i].getInteger(MediaFormat.KEY_BIT_RATE)}\n")
+                        append("DURATION = ${audioTracks[i].getLong(MediaFormat.KEY_DURATION)}\n")
+                        append("KEY_SAMPLE_RATE = ${audioTracks[i].getInteger(MediaFormat.KEY_SAMPLE_RATE)}\n")
+                    }
                 }
             }
         }
