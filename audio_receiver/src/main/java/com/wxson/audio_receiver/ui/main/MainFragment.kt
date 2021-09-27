@@ -118,7 +118,7 @@ class MainFragment : Fragment(), View.OnClickListener {
             MsgType.SHOW_CONNECT_STATUS.ordinal -> showConnectStatus(viewModelMsg.obj as Boolean)
             MsgType.MSG.ordinal -> showMsg(viewModelMsg.obj as String)
             MsgType.SHOW_SELF_DEVICE_INFO.ordinal -> showSelfDeviceInfo(viewModelMsg.obj as WifiP2pDevice?)
-            MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal -> showRemoteDeviceInfo(viewModelMsg.obj as WifiP2pDevice)
+            MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal -> showRemoteDeviceInfo(viewModelMsg.obj as WifiP2pDevice?)
             MsgType.SHOW_WIFI_P2P_INFO.ordinal -> showWifiP2pInfo(viewModelMsg.obj as WifiP2pInfo?)
             MsgType.SHOW_LOADING_DIALOG.ordinal -> loadingDialog.show(viewModelMsg.obj as String, cancelable = true, canceledOnTouchOutside = false)
             MsgType.DISMISS_LOADING_DIALOG.ordinal -> loadingDialog.dismiss()
@@ -172,9 +172,14 @@ class MainFragment : Fragment(), View.OnClickListener {
         tvMyDeviceStatus?.text = ""
     }
 
-    private fun showRemoteDeviceInfo(remoteDevice: WifiP2pDevice) {
-        tvRemoteDeviceName?.text = remoteDevice.deviceName
-        tvRemoteDeviceAdress?.text = remoteDevice.deviceAddress
+    private fun showRemoteDeviceInfo(remoteDevice: WifiP2pDevice?) {
+        if (remoteDevice == null) {
+            tvRemoteDeviceName?.text = ""
+            tvRemoteDeviceAdress?.text = ""
+        } else {
+            tvRemoteDeviceName?.text = remoteDevice.deviceName
+            tvRemoteDeviceAdress?.text = remoteDevice.deviceAddress
+        }
     }
 
 }

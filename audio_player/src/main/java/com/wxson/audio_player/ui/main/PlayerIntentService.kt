@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.*
 import android.util.Log
 import com.wxson.audio_player.R
+import com.wxson.p2p_comm.Val
 import java.io.IOException
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -173,13 +174,13 @@ class ServerThread(private var clientSocket: Socket) : Runnable {
     private class OutputHandler(private val objectOutputStream: ObjectOutputStream) : Handler() {
         override fun handleMessage(msg: Message) {
             when (msg.what){
-                0x334 -> {  // audio
+                Val.msgCodeAudio -> {  // audio
                     writeObjectToClient(msg.obj)
-                    this.removeMessages(0x334)
+                    this.removeMessages(Val.msgCodeAudio)
                 }
-                0x123 -> {  // ByteArray
+                Val.msgCodeByteArray -> {  // ByteArray
                     writeObjectToClient(msg.obj)
-                    this.removeMessages(0x123)
+                    this.removeMessages(Val.msgCodeByteArray)
                 }
             }
         }

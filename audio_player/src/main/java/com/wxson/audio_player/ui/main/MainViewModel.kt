@@ -18,10 +18,11 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.wxson.p2p_comm.DirectBroadcastReceiver
+import com.wxson.audio_player.R
+import com.wxson.p2p_comm.*
 import com.wxson.p2p_comm.DirectBroadcastReceiver.Companion.getIntentFilter
-import com.wxson.p2p_comm.IDirectActionListener
-import com.wxson.p2p_comm.PcmTransferData
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
 import java.net.InetAddress
 
 class MainViewModel(application: Application) : AndroidViewModel(application), ChannelListener, IDirectActionListener {
@@ -56,8 +57,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val messageListener = object : IMessageListener {
         override fun onRemoteMsgArrived(arrivedString: String, clientInetAddress: InetAddress) {
             Log.i(thisTag, "onRemoteMsgArrived")
-            localMsgLiveData.postValue("arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
+//            localMsgLiveData.postValue("arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
+            Util.sendLiveData(localMsgLiveData, "arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
             when (arrivedString) {
+                Val.msgClientConnected -> {
+                    Util.sendLiveData(connectStatusLiveData, true)
+                }
+                Val.msgClientDisconnectRequest -> {
+                    // 向客户端发出应答，客户端收到应答后关闭socket线程
+                    val msg = Message()
+                    msg.what = Val.msgCodeByteArray
+                    msg.obj = Val.msgDisconnectReply.toByteArray()
+                    playerIntentService?.serverThread?.outputHandler?.sendMessage(msg)
+                    // 变更连接标识
+                    Util.sendLiveData(connectStatusLiveData, false)
+                }
                 "remote_cmd_pausePlay" -> {
                     this@MainViewModel.pausePlay()
                 }
@@ -74,7 +88,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                 "TcpSocketClientStatus" -> {
                 }
                 else -> {
-                    localMsgLiveData.postValue("$msgType:$msg")
+//                    localMsgLiveData.postValue("$msgType:$msg")
+                    Util.sendLiveData(localMsgLiveData, "$msgType:$msg")
                 }
             }
         }
@@ -106,6 +121,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "init")
         wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
+        // set a fixed name to the self device in wifi p2p group
+        setDeviceName(app.getString(R.string.app_name))
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         app.registerReceiver(receiver, getIntentFilter())
 //        bindPlayerIntentService()
@@ -144,10 +161,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
         if (!wifiP2pInfo.groupFormed) {
             Log.i(thisTag, "未建组！")
-            localMsgLiveData.postValue("未建组！")
+//            localMsgLiveData.postValue("未建组！")
+            Util.sendLiveData(localMsgLiveData, "未建组！")
         }else if(!wifiP2pInfo.isGroupOwner){
             Log.i(thisTag, "本机不是组长！")
-            localMsgLiveData.postValue("本机不是组长！")
+//            localMsgLiveData.postValue("本机不是组长！")
+            Util.sendLiveData(localMsgLiveData, "本机不是组长！")
         }
     }
 
@@ -174,18 +193,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.i(thisTag, "需要申请ACCESS_FINE_LOCATION权限")
             // Do not have permissions, request them now
-            localMsgLiveData.postValue("需要申请ACCESS_FINE_LOCATION权限")
+//            localMsgLiveData.postValue("需要申请ACCESS_FINE_LOCATION权限")
+            Util.sendLiveData(localMsgLiveData, "需要申请ACCESS_FINE_LOCATION权限")
             return
         }
         wifiP2pManager.createGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "createGroup onSuccess")
-                localMsgLiveData.postValue("createGroup onSuccess")
+//                localMsgLiveData.postValue("createGroup onSuccess")
+                Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
             }
 
             override fun onFailure(reason: Int) {
                 Log.i(thisTag, "createGroup onFailure: $reason")
-                localMsgLiveData.postValue("createGroup onFailure: $reason")
+//                localMsgLiveData.postValue("createGroup onFailure: $reason")
+                Util.sendLiveData(localMsgLiveData, "createGroup onFailure: $reason")
             }
         })
     }
@@ -194,15 +216,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "removeGroup onSuccess")
-                connectStatusLiveData.postValue(false)
+//                connectStatusLiveData.postValue(false)
+                Util.sendLiveData(connectStatusLiveData, false)
                 // notify MediaCodecCallback of connect status
                 // TODO("Not yet implemented")
-                localMsgLiveData.postValue("removeGroup onSuccess")
+//                localMsgLiveData.postValue("removeGroup onSuccess")
+                Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
             }
 
             override fun onFailure(reason: Int) {
                 Log.i(thisTag, "removeGroup onFailure")
-                localMsgLiveData.postValue("removeGroup onFailure")
+//                localMsgLiveData.postValue("removeGroup onFailure")
+                Util.sendLiveData(localMsgLiveData, "removeGroup onFailure $reason")
             }
         })
     }
@@ -264,6 +289,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         val intent = Intent(app, PlayerIntentService::class.java)
         app.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
+
+    private fun setDeviceName(deviceName: String) {
+        try {
+            val paramTypes0 = WifiP2pManager.Channel::class.java
+            val paramTypes1 = String::class.java
+            val paramTypes2 = WifiP2pManager.ActionListener::class.java
+
+            val setDeviceName: Method = wifiP2pManager.javaClass.getMethod(
+                "setDeviceName", paramTypes0, paramTypes1, paramTypes2
+            )
+            setDeviceName.isAccessible = true
+            setDeviceName.invoke(wifiP2pManager, channel,
+                deviceName,
+                object : WifiP2pManager.ActionListener {
+                    override fun onSuccess() {
+                        Log.i(thisTag, "setDeviceName succeeded")
+                    }
+
+                    override fun onFailure(reason: Int) {
+                        Log.i(thisTag, "setDeviceName failed")
+                    }
+                })
+        } catch (e: NoSuchMethodException) {
+            e.printStackTrace()
+        } catch (e: IllegalAccessException) {
+            e.printStackTrace()
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+        } catch (e: InvocationTargetException) {
+            e.printStackTrace()
+        }
+    }
+
 
     //endregion
 }

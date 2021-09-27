@@ -1,6 +1,7 @@
 package com.wxson.audio_receiver.ui.main
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -20,10 +21,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.wxson.audio_receiver.R
-import com.wxson.p2p_comm.DirectBroadcastReceiver
-import com.wxson.p2p_comm.IDirectActionListener
-import com.wxson.p2p_comm.PcmTransferData
-import com.wxson.p2p_comm.ViewModelMsg
+import com.wxson.p2p_comm.*
 import java.lang.ref.WeakReference
 import java.util.*
 
@@ -40,7 +38,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private var wifiP2pEnabled = false
     private val wifiP2pDeviceList = ArrayList<WifiP2pDevice>()
     val deviceAdapter: DeviceAdapter
-    private lateinit var wifiP2pDevice: WifiP2pDevice
+    private lateinit var remoteDevice: WifiP2pDevice
     private var pcmPlayer: PcmPlayer? = null
 
     //region LiveData
@@ -54,8 +52,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     class MainHandler(private var viewModel: WeakReference<MainViewModel>) : Handler() {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
-                MsgType.ARRIVED_STRING.ordinal ->
+                MsgType.ARRIVED_STRING.ordinal -> {
                     viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
+                }
                 MsgType.LOCAL_MSG.ordinal ->
                     viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "local msg:" + msg.obj.toString()))
                 MsgType.PCM_TRANSFER_DATA.ordinal -> viewModel.get()?.playPcmData(msg.obj as PcmTransferData)
@@ -75,8 +74,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         deviceAdapter = DeviceAdapter(wifiP2pDeviceList)
         deviceAdapter.setClickListener(object : DeviceAdapter.OnClickListener {
             override fun onItemClick(position: Int) {
-                wifiP2pDevice = wifiP2pDeviceList[position]
-                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, wifiP2pDevice.deviceName + "将要连接"))
+                remoteDevice = wifiP2pDeviceList[position]
+                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, remoteDevice.deviceName + "将要连接"))
                 connect()
             }
         })
@@ -121,11 +120,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     fun disconnect() {
-        //向对方发送连接断开消息
+        //向对方发送连接断开请求
         val msg = Message()
         msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
-        msg.obj = "disconnecting"
+//        msg.obj = "disconnecting"
+        msg.obj = Val.msgClientDisconnectRequest
         clientRunnable.threadHandler.sendMessage(msg)
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
         //阻塞其他綫程300毫秒，防止消息发送前切断连接
         clientThread.join(300)
         //
@@ -148,11 +149,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         clientRunnable = ClientRunnable(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
         clientThread = Thread(clientRunnable)
         clientThread.start()
+        Thread.sleep(100)   //延时片刻，确保线程Looper已经启动
     }
 
     private fun connect() {
         val config = WifiP2pConfig()
-        config.deviceAddress = wifiP2pDevice.deviceAddress
+        config.deviceAddress = remoteDevice.deviceAddress
         config.wps.setup = WpsInfo.PBC
         sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "正在连接"))
         // permission check
@@ -186,6 +188,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private fun clearWifiP2pDeviceList() {
         wifiP2pDeviceList.clear()
         deviceAdapter.notifyDataSetChanged()
@@ -198,16 +201,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         pcmPlayer?.writePcmData(pcmTransferData.pcmData)
     }
 
-    private fun isMainThread() : Boolean {
-        return Thread.currentThread() == Looper.getMainLooper().thread
-    }
-
     private fun sendMsgLiveData(viewModelMsg: ViewModelMsg) {
-        if (isMainThread()) {
-            msgLiveData.value = viewModelMsg
-        } else {
-            msgLiveData.postValue(viewModelMsg)
-        }
+        Util.sendLiveData(msgLiveData, viewModelMsg)
     }
     //endregion
 
@@ -224,20 +219,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         //显示WifiP2pInfo
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, wifiP2pInfo))
         //显示选中的wifiP2pDevice
-        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, wifiP2pDevice))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, remoteDevice))
         //判断本机为非群主，且群已经建立
         if (wifiP2pInfo.groupFormed && !wifiP2pInfo.isGroupOwner) {
             //建立并启动ClientThread
             startClientThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
+            //启动ClientThread成功后，继续以下处理
             //向对方发送连接成功消息
             val msg = Message()
             msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
-            msg.obj = "connected"
+            msg.obj = Val.msgClientConnected
             clientRunnable.threadHandler.sendMessage(msg)
 
         }
-//        wifiP2pDeviceList.clear()
-//        deviceAdapter.notifyDataSetChanged()
     }
 
     override fun onDisconnection() {
@@ -247,7 +241,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         clearWifiP2pDeviceList()
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, null))
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
-        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_SELF_DEVICE_INFO.ordinal, null))
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, null))
     }
 
     override fun onSelfDeviceAvailable(selfDevice: WifiP2pDevice) {
@@ -255,6 +249,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_SELF_DEVICE_INFO.ordinal, selfDevice))
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     override fun onPeersAvailable(deviceList: Collection<WifiP2pDevice>) {
         Log.i(thisTag, "onPeersAvailable :" + wifiP2pDeviceList.size)
         wifiP2pDeviceList.clear()

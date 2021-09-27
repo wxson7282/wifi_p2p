@@ -5,6 +5,7 @@ import android.os.Looper
 import android.os.Message
 import android.util.Log
 import com.wxson.p2p_comm.PcmTransferData
+import com.wxson.p2p_comm.Val
 import java.io.*
 import java.lang.ref.WeakReference
 import java.net.ConnectException
@@ -47,8 +48,8 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
             thisThread = thread {
                 // 读取Socket输入流中的内容
                 var inputObject: Any? = objectInputStream.readObject()
-                // 如果输入流为空 或者 当前线程被外部中断 则停止循环，终止子线程
-                while (inputObject != null && !Thread.currentThread().isInterrupted) {
+                // 如果输入流为空 则停止循环，终止子线程
+                while (inputObject != null) {
                     when (inputObject) {
                         is PcmTransferData -> {     // pcm数据
                             Log.i(thisTag, "接收到PcmTransferData类")
@@ -67,6 +68,9 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
                             msg.what = MsgType.ARRIVED_STRING.ordinal
                             msg.obj = arrivedString
                             mainHandler.sendMessage(msg)
+                            // 如果收到中断连接应答，则停止当前线程
+                            if (arrivedString == Val.msgDisconnectReply)
+                                break
                         }
                         else -> {                   // 其他数据
                             Log.i(thisTag, "接收到其它类 ${inputObject.javaClass.simpleName}")
