@@ -61,7 +61,7 @@ class SampleViewModel : ViewModel() {
     //region private method
     private fun playPcmData(pcmTransferData: PcmTransferData) {
         if (pcmPlayer == null) {
-            pcmPlayer = PcmPlayer(pcmTransferData.mediaFormat)
+            pcmPlayer = PcmPlayer(pcmTransferData.sampleRateInHz)
         }
         pcmPlayer?.writePcmData(pcmTransferData.pcmData)
     }

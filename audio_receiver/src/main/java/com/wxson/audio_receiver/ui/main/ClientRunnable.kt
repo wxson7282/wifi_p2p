@@ -22,6 +22,7 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
     private lateinit var objectOutputStream: ObjectOutputStream
     private lateinit var objectInputStream: ObjectInputStream
     private lateinit var thisThread: Thread
+    private var pcmPlayer: PcmPlayer? = null
 
     // 定义线程的Handler对象，用以响应线程调用者发来的消息
     class ThreadHandler(private var clientRunnable: WeakReference<ClientRunnable>) : Handler() {
@@ -52,13 +53,14 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
                 while (inputObject != null) {
                     when (inputObject) {
                         is PcmTransferData -> {     // pcm数据
-                            Log.i(thisTag, "接收到PcmTransferData类")
+//                            Log.i(thisTag, "接收到PcmTransferData类")
                             val pcmTransferData: PcmTransferData = inputObject
                             // pcmTransferData -> MainViewModel -> AudioTrack
                             val msg = Message()
                             msg.what = MsgType.PCM_TRANSFER_DATA.ordinal
                             msg.obj = pcmTransferData
                             mainHandler.sendMessage(msg)
+//                            playPcmData(inputObject)
                         }
                         is ByteArray -> {           // 字符数据
                             // 每当读到来自服务器的文字数据之后，发送消息通知调用者
@@ -139,6 +141,13 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
 
     fun closeSocket() {
         socket.close()
+    }
+
+    private fun playPcmData(pcmTransferData: PcmTransferData) {
+        if (pcmPlayer == null) {
+            pcmPlayer = PcmPlayer(pcmTransferData.sampleRateInHz)
+        }
+        pcmPlayer?.writePcmData(pcmTransferData.pcmData)
     }
 
 }

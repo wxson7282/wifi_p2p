@@ -21,12 +21,19 @@ object AudioUtil {
         return trackFormats
     }
 
-    fun initAudioTrack(mediaFormat: MediaFormat) : AudioTrack {
-        val sampleRate = mediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        val channels = mediaFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        val buffSize = AudioTrack.getMinBufferSize(sampleRate,channels, AudioFormat.ENCODING_PCM_16BIT)
+//    fun initAudioTrack(mediaFormat: MediaFormat) : AudioTrack {
+//        val sampleRate = mediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+//        val channels = mediaFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+//        val buffSize = AudioTrack.getMinBufferSize(sampleRate,channels, AudioFormat.ENCODING_PCM_16BIT)
+//        val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+//        val audioFormat = AudioFormat.Builder().setSampleRate(sampleRate).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build()
+//        return AudioTrack(audioAttributes, audioFormat, buffSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
+//    }
+
+    fun initAudioTrack(sampleRateInHz: Int) : AudioTrack {
+        val buffSize = AudioTrack.getMinBufferSize(sampleRateInHz, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
         val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-        val audioFormat = AudioFormat.Builder().setSampleRate(sampleRate).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build()
+        val audioFormat = AudioFormat.Builder().setSampleRate(sampleRateInHz).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build()
         return AudioTrack(audioAttributes, audioFormat, buffSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
     }
 }

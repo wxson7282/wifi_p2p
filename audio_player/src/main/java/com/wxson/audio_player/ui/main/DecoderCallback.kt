@@ -47,8 +47,12 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
                     val pcmData = ByteArray(bufferInfo.size)
                     outputBuffer?.get(pcmData)
                     // send out pcmTransferData
-                    transferDataListener.onTransferDataReady(PcmTransferData(codec.outputFormat, pcmData))
+                    val sampleRateInHz = codec.outputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                    transferDataListener.onTransferDataReady(PcmTransferData(sampleRateInHz, pcmData))
                     audioTrack.write(pcmData, 0, pcmData.size)
+                    //*********************
+                    Thread.sleep(6)
+                    //*********************
                     codec.releaseOutputBuffer(bufferIndex, false)
                 }
             } catch (e: Exception) {

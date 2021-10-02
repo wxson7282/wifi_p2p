@@ -49,7 +49,8 @@ class DummyPlayer<in T>(private val transferDataListener: ITransferDataListener)
                 if (mime != null && mime!!.startsWith("audio")) {
                     mediaFormat = format
                     // 建立dummy audioTrack
-                    dummyAudioTrack = AudioUtil.initAudioTrack(mediaFormat)
+//                    dummyAudioTrack = AudioUtil.initAudioTrack(mediaFormat)
+                    dummyAudioTrack = AudioUtil.initAudioTrack(mediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE))
                     // 选择音频轨
                     it.selectTrack(i)
                     sampleTime?.let {time ->

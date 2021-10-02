@@ -68,7 +68,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                     val msg = Message()
                     msg.what = Val.msgCodeByteArray
                     msg.obj = Val.msgDisconnectReply.toByteArray()
-                    playerIntentService?.serverThread?.outputHandler?.sendMessage(msg)
+                    playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg)
                     // 变更连接标识
                     Util.sendLiveData(connectStatusLiveData, false)
                 }
@@ -83,6 +83,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         override fun onLocalMsgOccurred(msgType: String, msg: String) {
             Log.i(thisTag, "onLocalMsgOccurred $msgType : $msg")
             when (msgType) {
+//                "PcmDataSent" -> {
+//
+//                }
                 "TcpSocketServiceStatus" -> {
                 }
                 "TcpSocketClientStatus" -> {
@@ -99,9 +102,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         override fun onTransferDataReady(pcmTransferData: PcmTransferData?) {
             // inform ServerOutputThread of TransferDataReady by outputHandler
             val msg = Message()
-            msg.what = 0x334
+            msg.what = Val.msgCodeAudio
             msg.obj = pcmTransferData
-            playerIntentService?.serverThread?.outputHandler?.sendMessage(msg)
+            playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg)
         }
     }
 
@@ -159,11 +162,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 //            startPlayerIntentService()
             bindPlayerIntentService()
         }
-        if (!wifiP2pInfo.groupFormed) {
+        if (wifiP2pInfo.groupFormed) {
+            Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
+        } else {
             Log.i(thisTag, "未建组！")
+            Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
 //            localMsgLiveData.postValue("未建组！")
             Util.sendLiveData(localMsgLiveData, "未建组！")
-        }else if(!wifiP2pInfo.isGroupOwner){
+        }
+        if (!wifiP2pInfo.isGroupOwner) {
             Log.i(thisTag, "本机不是组长！")
 //            localMsgLiveData.postValue("本机不是组长！")
             Util.sendLiveData(localMsgLiveData, "本机不是组长！")
@@ -207,7 +214,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             override fun onFailure(reason: Int) {
                 Log.i(thisTag, "createGroup onFailure: $reason")
 //                localMsgLiveData.postValue("createGroup onFailure: $reason")
-                Util.sendLiveData(localMsgLiveData, "createGroup onFailure: $reason")
+                Util.sendLiveData(localMsgLiveData, "createGroup onFailure")
             }
         })
     }
@@ -227,7 +234,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             override fun onFailure(reason: Int) {
                 Log.i(thisTag, "removeGroup onFailure")
 //                localMsgLiveData.postValue("removeGroup onFailure")
-                Util.sendLiveData(localMsgLiveData, "removeGroup onFailure $reason")
+                Util.sendLiveData(localMsgLiveData, "removeGroup onFailure")
             }
         })
     }

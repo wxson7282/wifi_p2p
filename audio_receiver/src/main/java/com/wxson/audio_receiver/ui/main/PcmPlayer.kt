@@ -1,11 +1,11 @@
 package com.wxson.audio_receiver.ui.main
 
 import android.media.AudioTrack
-import android.media.MediaFormat
 import com.wxson.p2p_comm.AudioUtil
 
-class PcmPlayer(mediaFormat: MediaFormat) {
-    private val audioTrack: AudioTrack = AudioUtil.initAudioTrack(mediaFormat)
+class PcmPlayer(sampleRateInHz: Int) {
+    private val audioTrack: AudioTrack = AudioUtil.initAudioTrack(sampleRateInHz)
+
     init {
         // 启动audioTrack
         audioTrack.play()

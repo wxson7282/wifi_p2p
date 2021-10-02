@@ -21,7 +21,7 @@ private lateinit var messageListener: IMessageListener
 class PlayerIntentService : IntentService("PlayerIntentService") {
     private val runningTag = this.javaClass.simpleName
 
-    var serverThread: ServerThread? = null
+    var serverRunnable: ServerRunnable? = null
 
     override fun onHandleIntent(intent: Intent?) {
         when (intent?.action) {
@@ -47,8 +47,8 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
                 //等待客户端来连接
                 clientSocket = serverSocket.accept()   //blocks until a connection is made
                 Log.i(runningTag, "client IP address: " + clientSocket.inetAddress.hostAddress)
-                serverThread = ServerThread(clientSocket)
-                Thread(serverThread).start()
+                serverRunnable = ServerRunnable(clientSocket)
+                Thread(serverRunnable).start()
             }
         } catch (e: IOException) {
             e.printStackTrace()
@@ -87,7 +87,7 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
     }
 
     override fun onDestroy() {
-        serverThread?.outputHandler?.removeCallbacksAndMessages(null)
+        serverRunnable?.outputHandler?.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -119,7 +119,7 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
     }
 }
 
-class ServerThread(private var clientSocket: Socket) : Runnable {
+class ServerRunnable(private var clientSocket: Socket) : Runnable {
     private val runningTag = this.javaClass.simpleName
     private val objectInputStream: ObjectInputStream = ObjectInputStream(clientSocket.getInputStream())
     private val objectOutputStream: ObjectOutputStream = ObjectOutputStream(clientSocket.getOutputStream())
@@ -127,7 +127,7 @@ class ServerThread(private var clientSocket: Socket) : Runnable {
     internal var outputHandler: Handler? = null
     override fun run() {
         try {
-            Log.i(runningTag, "ServerThread run")
+            Log.i(runningTag, "ServerRunnable run")
             // 启动一条子线程来读取客户响应的数据
             object : Thread() {
                 override fun run() {
@@ -177,6 +177,7 @@ class ServerThread(private var clientSocket: Socket) : Runnable {
                 Val.msgCodeAudio -> {  // audio
                     writeObjectToClient(msg.obj)
                     this.removeMessages(Val.msgCodeAudio)
+//                    messageListener.onLocalMsgOccurred("PcmDataSent", "Success")
                 }
                 Val.msgCodeByteArray -> {  // ByteArray
                     writeObjectToClient(msg.obj)

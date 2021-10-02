@@ -52,6 +52,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginBottom="16dp"
+        android:enabled="false"
         android:text="测试"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -60,7 +61,7 @@
         android:id="@+id/imageBtnStop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
+        android:layout_marginStart="12dp"
         android:layout_marginTop="24dp"
         android:src="@drawable/ic_media_stop_light"
         app:layout_constraintStart_toEndOf="@id/imageBtnPlay"
@@ -70,7 +71,7 @@
         android:id="@+id/imageBtnPause"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
+        android:layout_marginStart="12dp"
         android:layout_marginTop="24dp"
         android:src="@drawable/ic_media_pause_light"
         app:layout_constraintStart_toEndOf="@+id/imageBtnStop"
@@ -80,9 +81,9 @@
         android:id="@+id/imageBtnMute"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="12dp"
         android:layout_marginTop="24dp"
-        android:src="@drawable/ic_vol_mute"
+        android:src="@drawable/ic_mute"
         app:layout_constraintStart_toEndOf="@+id/imageBtnPause"
         app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup" />
 

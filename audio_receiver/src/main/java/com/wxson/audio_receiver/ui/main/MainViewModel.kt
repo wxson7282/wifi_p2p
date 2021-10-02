@@ -55,9 +55,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                 MsgType.ARRIVED_STRING.ordinal -> {
                     viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
                 }
+                MsgType.PCM_TRANSFER_DATA.ordinal -> viewModel.get()?.playPcmData(msg.obj as PcmTransferData)
                 MsgType.LOCAL_MSG.ordinal ->
                     viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "local msg:" + msg.obj.toString()))
-                MsgType.PCM_TRANSFER_DATA.ordinal -> viewModel.get()?.playPcmData(msg.obj as PcmTransferData)
             }
         }
     }
@@ -83,9 +83,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     override fun onCleared() {
-        clientRunnable.closeSocket()
-        clientThread.interrupt()
-        
+//        clientRunnable.closeSocket()
+//        if (clientThread.isAlive)  clientThread.interrupt()
+
         app.unregisterReceiver(receiver)
         super.onCleared()
     }
@@ -196,7 +196,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private fun playPcmData(pcmTransferData: PcmTransferData) {
         if (pcmPlayer == null) {
-            pcmPlayer = PcmPlayer(pcmTransferData.mediaFormat)
+            pcmPlayer = PcmPlayer(pcmTransferData.sampleRateInHz)
         }
         pcmPlayer?.writePcmData(pcmTransferData.pcmData)
     }

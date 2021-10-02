@@ -23,6 +23,10 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private val runningTag = this.javaClass.simpleName
     private lateinit var viewModel: MainViewModel
     private lateinit var imageConnectStatus: ImageView
+    private lateinit var btnCreateGroup: Button
+    private lateinit var btnDeleteGroup: Button
+    private lateinit var imageBtnMute: ImageButton
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -37,12 +41,15 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             findViewById<Button>(R.id.btnTest).setOnClickListener{
                 findNavController().navigate(R.id.action_MainFragment_to_SecondFragment)
             }
-            findViewById<Button>(R.id.btnCreateGroup).setOnClickListener(this@MainFragment)
-            findViewById<Button>(R.id.btnDeleteGroup).setOnClickListener(this@MainFragment)
+            btnCreateGroup = findViewById<Button>(R.id.btnCreateGroup)
+            btnCreateGroup.setOnClickListener(this@MainFragment)
+            btnDeleteGroup = findViewById<Button>(R.id.btnDeleteGroup)
+            btnDeleteGroup.setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnPlay).setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnStop).setOnClickListener(this@MainFragment)
             findViewById<ImageButton>(R.id.imageBtnPause).setOnClickListener(this@MainFragment)
-            findViewById<ImageButton>(R.id.imageBtnMute).setOnClickListener(this@MainFragment)
+            imageBtnMute = findViewById<ImageButton>(R.id.imageBtnMute)
+            imageBtnMute.setOnClickListener(this@MainFragment)
             imageConnectStatus = findViewById(R.id.imageConnected)
         }
     }
@@ -54,7 +61,19 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         //申请权限
         requestLocationPermission()
         // registers observer for information from viewModel
-        val localMsgObserver: Observer<String> = Observer { localMsg -> showMsg(localMsg.toString()) }
+        val localMsgObserver: Observer<String> = Observer { localMsg ->
+            when (localMsg) {
+                "createGroup onSuccess" -> {
+                    btnCreateGroup.isEnabled = false
+                    btnDeleteGroup.isEnabled = true
+                }
+                "removeGroup onSuccess" -> {
+                    btnCreateGroup.isEnabled = true
+                    btnDeleteGroup.isEnabled = false
+                }
+            }
+            showMsg(localMsg)
+        }
         viewModel.getLocalMsg().observe(viewLifecycleOwner, localMsgObserver)
         val connectStatusObserver: Observer<Boolean> = Observer { isConnected -> connectStatusHandler(isConnected!!) }
         viewModel.getConnectStatus().observe(viewLifecycleOwner, connectStatusObserver)
