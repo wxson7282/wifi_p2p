@@ -172,12 +172,14 @@ class ServerRunnable(private var clientSocket: Socket) : Runnable {
     }
 
     private class OutputHandler(private val objectOutputStream: ObjectOutputStream) : Handler() {
+        private val thisTag = this.javaClass.simpleName
         override fun handleMessage(msg: Message) {
             when (msg.what){
                 Val.msgCodeAudio -> {  // audio
                     writeObjectToClient(msg.obj)
                     this.removeMessages(Val.msgCodeAudio)
 //                    messageListener.onLocalMsgOccurred("PcmDataSent", "Success")
+//                    Log.e(thisTag, "${Thread.currentThread().id} : ${Thread.currentThread().name}")
                 }
                 Val.msgCodeByteArray -> {  // ByteArray
                     writeObjectToClient(msg.obj)

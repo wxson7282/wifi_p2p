@@ -25,6 +25,9 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private lateinit var imageConnectStatus: ImageView
     private lateinit var btnCreateGroup: Button
     private lateinit var btnDeleteGroup: Button
+    private lateinit var imageBtnPlay: ImageButton
+    private lateinit var imageBtnPause: ImageButton
+    private lateinit var imageBtnStop: ImageButton
     private lateinit var imageBtnMute: ImageButton
 
 
@@ -41,15 +44,19 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             findViewById<Button>(R.id.btnTest).setOnClickListener{
                 findNavController().navigate(R.id.action_MainFragment_to_SecondFragment)
             }
-            btnCreateGroup = findViewById<Button>(R.id.btnCreateGroup)
+            btnCreateGroup = findViewById(R.id.btnCreateGroup)
             btnCreateGroup.setOnClickListener(this@MainFragment)
-            btnDeleteGroup = findViewById<Button>(R.id.btnDeleteGroup)
+            btnDeleteGroup = findViewById(R.id.btnDeleteGroup)
             btnDeleteGroup.setOnClickListener(this@MainFragment)
-            findViewById<ImageButton>(R.id.imageBtnPlay).setOnClickListener(this@MainFragment)
-            findViewById<ImageButton>(R.id.imageBtnStop).setOnClickListener(this@MainFragment)
-            findViewById<ImageButton>(R.id.imageBtnPause).setOnClickListener(this@MainFragment)
-            imageBtnMute = findViewById<ImageButton>(R.id.imageBtnMute)
+            imageBtnPlay = findViewById(R.id.imageBtnPlay)
+            imageBtnPlay.setOnClickListener(this@MainFragment)
+            imageBtnStop = findViewById(R.id.imageBtnStop)
+            imageBtnStop.setOnClickListener(this@MainFragment)
+            imageBtnPause = findViewById(R.id.imageBtnPause)
+            imageBtnPause.setOnClickListener(this@MainFragment)
+            imageBtnMute = findViewById(R.id.imageBtnMute)
             imageBtnMute.setOnClickListener(this@MainFragment)
+
             imageConnectStatus = findViewById(R.id.imageConnected)
         }
     }
@@ -146,9 +153,66 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
                 viewModel.pause()
             }
             R.id.imageBtnMute -> {
+//                imageBtnMute.imageAlpha = 100
+//                imageBtnMute.isEnabled = false
                 viewModel.mute()
             }
-
         }
+    }
+
+    private fun setImageBtnEnabled(imageBtn: ImageButton, enabled: Boolean) {
+        if (enabled) {
+            imageBtn.imageAlpha = 0
+            imageBtn.isEnabled = true
+        } else {
+            imageBtn.imageAlpha = 100
+            imageBtn.isEnabled = false
+        }
+    }
+
+    private fun setImageBtnPauseEffective(isEffective: Boolean) {
+        if (isEffective) {
+            imageBtnPause.setImageResource(R.drawable.ic_play_pause)
+        } else {
+            imageBtnPause.setImageResource(R.drawable.ic_media_pause_light)
+        }
+    }
+
+    private fun setImageBtnMuteEffective(isEffective: Boolean) {
+        if (isEffective) {
+            imageBtnMute.setImageResource(R.drawable.ic_mute_fill)
+        } else {
+            imageBtnMute.setImageResource(R.drawable.ic_speaker_on)
+        }
+    }
+
+    private fun setPlayerBtnByState(state: String) {
+        when (state){
+            "STOPPED" -> {
+                setImageBtnEnabled(imageBtnMute, false)
+                setImageBtnEnabled(imageBtnPause, false)
+                setImageBtnEnabled(imageBtnPlay, true)
+                setImageBtnEnabled(imageBtnStop,false)
+            }
+            "PLAYING" -> {
+                setImageBtnEnabled(imageBtnMute, true)
+                setImageBtnEnabled(imageBtnPause, true)
+                setImageBtnEnabled(imageBtnPlay, false)
+                setImageBtnEnabled(imageBtnStop,true)
+            }
+            "PAUSED" -> {
+                setImageBtnEnabled(imageBtnMute, false)
+                setImageBtnEnabled(imageBtnPause, true)
+                setImageBtnEnabled(imageBtnPlay, true)
+                setImageBtnEnabled(imageBtnStop,true)
+            }
+            "MUTE" -> {
+                setImageBtnEnabled(imageBtnMute, false)
+                setImageBtnEnabled(imageBtnPause, false)
+                setImageBtnEnabled(imageBtnPlay, true)
+                setImageBtnEnabled(imageBtnStop,false)
+            }
+        }
+
     }
 }

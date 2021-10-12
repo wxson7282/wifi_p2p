@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.*
 import android.content.pm.PackageManager
-import android.content.res.AssetFileDescriptor
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
@@ -32,7 +31,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val wifiP2pManager: WifiP2pManager
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
-    private val dummyPlayer: DummyPlayer<Any>
+    private var dummyPlayerRunnable: DummyPlayerRunnable
+    private var playThread: Thread
 
     @SuppressLint("StaticFieldLeak")
     var playerIntentService: PlayerIntentService? = null
@@ -57,7 +57,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val messageListener = object : IMessageListener {
         override fun onRemoteMsgArrived(arrivedString: String, clientInetAddress: InetAddress) {
             Log.i(thisTag, "onRemoteMsgArrived")
-//            localMsgLiveData.postValue("arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
             Util.sendLiveData(localMsgLiveData, "arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
             when (arrivedString) {
                 Val.msgClientConnected -> {
@@ -73,7 +72,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                     Util.sendLiveData(connectStatusLiveData, false)
                 }
                 "remote_cmd_pausePlay" -> {
-                    this@MainViewModel.pausePlay()
+                    this@MainViewModel.pause()
                 }
                 "remote_cmd_play" -> {
                 }
@@ -91,7 +90,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                 "TcpSocketClientStatus" -> {
                 }
                 else -> {
-//                    localMsgLiveData.postValue("$msgType:$msg")
                     Util.sendLiveData(localMsgLiveData, "$msgType:$msg")
                 }
             }
@@ -100,10 +98,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private val transferDataListener = object : ITransferDataListener {
         override fun onTransferDataReady(pcmTransferData: PcmTransferData?) {
-            // inform ServerOutputThread of TransferDataReady by outputHandler
             val msg = Message()
-            msg.what = Val.msgCodeAudio
-            msg.obj = pcmTransferData
+            // 表示pcm流已经到结尾，因该结束播放并通知通信进程
+            if (pcmTransferData == null) {
+                // 向客户端发出结束消息
+                msg.what = Val.msgBufferFlagEndOfStream
+                msg.obj = null
+                Log.i(thisTag, "transferDataListener: End of stream")
+            } else {
+                // inform ServerOutputThread of TransferDataReady by outputHandler
+                msg.what = Val.msgCodeAudio
+                msg.obj = pcmTransferData
+            }
             playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg)
         }
     }
@@ -124,12 +130,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "init")
         wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
-        // set a fixed name to the self device in wifi p2p group
+        // set a fixed name to the self device used in wifi p2p group
         setDeviceName(app.getString(R.string.app_name))
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         app.registerReceiver(receiver, getIntentFilter())
-//        bindPlayerIntentService()
-        dummyPlayer = DummyPlayer(transferDataListener)
+        bindPlayerIntentService()
+        // 启动PlayThread
+        dummyPlayerRunnable = DummyPlayerRunnable(transferDataListener)
+        playThread = Thread(dummyPlayerRunnable)
+        playThread.start()
     }
 
     override fun onCleared() {
@@ -141,8 +150,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         playerIntentService = null
         unregisterBroadcastReceiver()
         removeGroup()
-        dummyPlayer.releaseAll()
-
+        dummyPlayerRunnable.threadHandler.looper.quitSafely()
         super.onCleared()
     }
 
@@ -160,19 +168,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
         if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
 //            startPlayerIntentService()
-            bindPlayerIntentService()
+//            bindPlayerIntentService()
         }
         if (wifiP2pInfo.groupFormed) {
             Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
         } else {
             Log.i(thisTag, "未建组！")
             Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
-//            localMsgLiveData.postValue("未建组！")
             Util.sendLiveData(localMsgLiveData, "未建组！")
         }
         if (!wifiP2pInfo.isGroupOwner) {
             Log.i(thisTag, "本机不是组长！")
-//            localMsgLiveData.postValue("本机不是组长！")
             Util.sendLiveData(localMsgLiveData, "本机不是组长！")
         }
     }
@@ -200,20 +206,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.i(thisTag, "需要申请ACCESS_FINE_LOCATION权限")
             // Do not have permissions, request them now
-//            localMsgLiveData.postValue("需要申请ACCESS_FINE_LOCATION权限")
             Util.sendLiveData(localMsgLiveData, "需要申请ACCESS_FINE_LOCATION权限")
             return
         }
         wifiP2pManager.createGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "createGroup onSuccess")
-//                localMsgLiveData.postValue("createGroup onSuccess")
                 Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
             }
 
             override fun onFailure(reason: Int) {
                 Log.i(thisTag, "createGroup onFailure: $reason")
-//                localMsgLiveData.postValue("createGroup onFailure: $reason")
                 Util.sendLiveData(localMsgLiveData, "createGroup onFailure")
             }
         })
@@ -223,55 +226,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "removeGroup onSuccess")
-//                connectStatusLiveData.postValue(false)
                 Util.sendLiveData(connectStatusLiveData, false)
                 // notify MediaCodecCallback of connect status
                 // TODO("Not yet implemented")
-//                localMsgLiveData.postValue("removeGroup onSuccess")
                 Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
             }
 
             override fun onFailure(reason: Int) {
                 Log.i(thisTag, "removeGroup onFailure")
-//                localMsgLiveData.postValue("removeGroup onFailure")
                 Util.sendLiveData(localMsgLiveData, "removeGroup onFailure")
             }
         })
     }
 
-    fun play(afd: AssetFileDescriptor) {
-        Log.i(thisTag, "play()")
-        if (dummyPlayer.setDataSource(afd)){
-            dummyPlayer.play()
-        }
-    }
-
     fun play(fileName: String) {
         Log.i(thisTag, "play()")
         val pathName: String = app.cacheDir.path
-            if (dummyPlayer.setDataSource("$pathName/$fileName"))
-                dummyPlayer.play()
+        dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
+            MsgType.DUMMY_PLAYER_PLAY.ordinal,
+            "$pathName/$fileName"))
     }
 
     fun stop() {
         Log.i(thisTag, "stop()")
-        dummyPlayer.stop()
+        dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
+            MsgType.DUMMY_PLAYER_STOP.ordinal, ""))
     }
 
     fun pause() {
         Log.i(thisTag, "pause()")
-        dummyPlayer.pause()
+        dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
+            MsgType.DUMMY_PLAYER_PAUSE.ordinal, ""))
     }
 
     fun mute() {
         Log.i(thisTag, "mute()")
-        dummyPlayer.mute()
+        dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
+            MsgType.DUMMY_PLAYER_MUTE.ordinal, ""))
     }
 
-    fun pausePlay() {
-        Log.i(thisTag, "pausePlay()")
-        dummyPlayer.pausePlay()
-    }
     //endregion
 
     //region private methods
@@ -329,6 +322,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
     }
 
-
+    private fun setMsg(msgWhat: Int, msgObj: Any) : Message {
+        val msg = Message()
+        msg.what = msgWhat
+        msg.obj = msgObj
+        return msg
+    }
     //endregion
 }

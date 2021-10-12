@@ -6,4 +6,5 @@ object Val {
     const val msgDisconnectReply = "终止连接应答"
     const val msgCodeByteArray = 0x123
     const val msgCodeAudio = 0x334
+    const val msgBufferFlagEndOfStream = 0x335
 }

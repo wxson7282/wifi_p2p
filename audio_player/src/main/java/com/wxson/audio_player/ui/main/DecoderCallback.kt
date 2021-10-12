@@ -51,7 +51,7 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
                     transferDataListener.onTransferDataReady(PcmTransferData(sampleRateInHz, pcmData))
                     audioTrack.write(pcmData, 0, pcmData.size)
                     //*********************
-                    Thread.sleep(6)
+//                    Thread.sleep(6)
                     //*********************
                     codec.releaseOutputBuffer(bufferIndex, false)
                 }
