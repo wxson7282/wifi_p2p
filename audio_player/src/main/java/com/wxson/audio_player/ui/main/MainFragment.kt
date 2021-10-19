@@ -16,6 +16,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.wxson.audio_player.R
+import com.wxson.audio_player.ui.main.state.*
 import pub.devrel.easypermissions.EasyPermissions
 
 class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnClickListener {
@@ -29,7 +30,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private lateinit var imageBtnPause: ImageButton
     private lateinit var imageBtnStop: ImageButton
     private lateinit var imageBtnMute: ImageButton
-
+    private lateinit var playerContext: PlayerContext
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -84,6 +85,9 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         viewModel.getLocalMsg().observe(viewLifecycleOwner, localMsgObserver)
         val connectStatusObserver: Observer<Boolean> = Observer { isConnected -> connectStatusHandler(isConnected!!) }
         viewModel.getConnectStatus().observe(viewLifecycleOwner, connectStatusObserver)
+        playerContext = PlayerContext(viewModel)            //定义环境角色
+        playerContext.setCurrentState(StoppedState())       //设置初始状态
+        setButton(playerContext.getCurrentState())
     }
 
     private fun connectStatusHandler(isConnected: Boolean) {
@@ -136,36 +140,93 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     }
 
     override fun onClick(v: View) {
-        when (v.id) {
-            R.id.btnCreateGroup -> {
-                viewModel.createGroup()
+        playerContext.apply {
+            when (v.id) {
+                R.id.btnCreateGroup -> {
+                    viewModel.createGroup()
+                }
+                R.id.btnDeleteGroup -> {
+                    viewModel.removeGroup()
+                }
+                R.id.imageBtnPlay -> {
+                    playHandle()
+                    setButton(getCurrentState())
+                }
+                R.id.imageBtnStop -> {
+                    stopHandle()
+                    setButton(getCurrentState())
+                }
+                R.id.imageBtnPause -> {
+                    when (getCurrentState()) {
+                        is PlayingState, is ResumeState, is UnMuteState -> {
+                            pauseHandle()
+                            setButton(getCurrentState())
+                        }
+                        is PausedState -> {
+                            resumeHandle()
+                            setButton(getCurrentState())
+                        }
+                    }
+                }
+                R.id.imageBtnMute -> {
+                    when (getCurrentState()) {
+                        is PlayingState, is ResumeState, is UnMuteState -> {
+                            muteHandle()
+                            setButton(getCurrentState())
+                        }
+                        is MuteState -> {
+                            unMuteHandle()
+                            setButton(getCurrentState())
+                        }
+                    }
+                }
             }
-            R.id.btnDeleteGroup -> {
-                viewModel.removeGroup()
+        }
+    }
+
+    private fun setButton(playerState: AbstractState) {
+        when (playerState) {
+            is StoppedState -> {
+                setImageBtnPauseEffective(false)
+                setImageBtnMuteEffective(false)
+                setImageBtnEnabled(imageBtnMute, false)
+                setImageBtnEnabled(imageBtnPause, false)
+                setImageBtnEnabled(imageBtnPlay, true)
+                setImageBtnEnabled(imageBtnStop, false)
             }
-            R.id.imageBtnPlay -> {
-                viewModel.play(getString(R.string.sample_music_name))
+            is PlayingState, is ResumeState, is UnMuteState -> {
+                setImageBtnPauseEffective(false)
+                setImageBtnMuteEffective(false)
+                setImageBtnEnabled(imageBtnMute, true)
+                setImageBtnEnabled(imageBtnPause, true)
+                setImageBtnEnabled(imageBtnPlay, false)
+                setImageBtnEnabled(imageBtnStop, true)
             }
-            R.id.imageBtnStop -> {
-                viewModel.stop()
+            is PausedState -> {
+                setImageBtnPauseEffective(true)
+                setImageBtnMuteEffective(false)
+                setImageBtnEnabled(imageBtnMute, false)
+                setImageBtnEnabled(imageBtnPause, true)
+                setImageBtnEnabled(imageBtnPlay, false)
+                setImageBtnEnabled(imageBtnStop, false)
             }
-            R.id.imageBtnPause -> {
-                viewModel.pause()
-            }
-            R.id.imageBtnMute -> {
-//                imageBtnMute.imageAlpha = 100
-//                imageBtnMute.isEnabled = false
-                viewModel.mute()
+            is MuteState -> {
+                setImageBtnMuteEffective(true)
+                setImageBtnPauseEffective(false)
+                setImageBtnEnabled(imageBtnMute, true)
+                setImageBtnEnabled(imageBtnPause, false)
+                setImageBtnEnabled(imageBtnPlay, false)
+                setImageBtnEnabled(imageBtnStop, false)
             }
         }
     }
 
     private fun setImageBtnEnabled(imageBtn: ImageButton, enabled: Boolean) {
         if (enabled) {
-            imageBtn.imageAlpha = 0
+            imageBtn.imageAlpha = 255
             imageBtn.isEnabled = true
         } else {
-            imageBtn.imageAlpha = 100
+            imageBtn.imageAlpha = 60
             imageBtn.isEnabled = false
         }
     }
@@ -180,39 +241,10 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
 
     private fun setImageBtnMuteEffective(isEffective: Boolean) {
         if (isEffective) {
-            imageBtnMute.setImageResource(R.drawable.ic_mute_fill)
-        } else {
             imageBtnMute.setImageResource(R.drawable.ic_speaker_on)
+        } else {
+            imageBtnMute.setImageResource(R.drawable.ic_mute_fill)
         }
     }
 
-    private fun setPlayerBtnByState(state: String) {
-        when (state){
-            "STOPPED" -> {
-                setImageBtnEnabled(imageBtnMute, false)
-                setImageBtnEnabled(imageBtnPause, false)
-                setImageBtnEnabled(imageBtnPlay, true)
-                setImageBtnEnabled(imageBtnStop,false)
-            }
-            "PLAYING" -> {
-                setImageBtnEnabled(imageBtnMute, true)
-                setImageBtnEnabled(imageBtnPause, true)
-                setImageBtnEnabled(imageBtnPlay, false)
-                setImageBtnEnabled(imageBtnStop,true)
-            }
-            "PAUSED" -> {
-                setImageBtnEnabled(imageBtnMute, false)
-                setImageBtnEnabled(imageBtnPause, true)
-                setImageBtnEnabled(imageBtnPlay, true)
-                setImageBtnEnabled(imageBtnStop,true)
-            }
-            "MUTE" -> {
-                setImageBtnEnabled(imageBtnMute, false)
-                setImageBtnEnabled(imageBtnPause, false)
-                setImageBtnEnabled(imageBtnPlay, true)
-                setImageBtnEnabled(imageBtnStop,false)
-            }
-        }
-
-    }
 }

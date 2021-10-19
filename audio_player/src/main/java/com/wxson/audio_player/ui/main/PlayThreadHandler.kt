@@ -14,7 +14,6 @@ class PlayThreadHandler(
     private lateinit var decoder: MediaCodec
     private lateinit var mediaFormat: MediaFormat
     private var mediaExtractor: MediaExtractor? = null
-    private var isMute: Boolean = false
     private var mime: String? = null
 
 
@@ -24,6 +23,8 @@ class PlayThreadHandler(
             MsgType.DUMMY_PLAYER_PAUSE.ordinal -> pause()
             MsgType.DUMMY_PLAYER_STOP.ordinal -> stop()
             MsgType.DUMMY_PLAYER_MUTE.ordinal -> mute()
+            MsgType.DUMMY_PLAYER_RESUME.ordinal -> resume()
+            MsgType.DUMMY_PLAYER_UNMUTE.ordinal -> unMute()
         }
     }
 
@@ -63,7 +64,11 @@ class PlayThreadHandler(
             dummyAudioTrack.pause()
             decoder.stop()
             decoder.release()
-        } else if (dummyAudioTrack.playState == AudioTrack.PLAYSTATE_PAUSED) {
+        }
+    }
+
+    private fun resume() {
+        if (dummyAudioTrack.playState == AudioTrack.PLAYSTATE_PAUSED) {
             initDecoder(mime!!)
             dummyAudioTrack.play()
             decoder.start()
@@ -79,13 +84,11 @@ class PlayThreadHandler(
     }
 
     private fun mute() {
-        isMute = if (isMute) {
-            dummyAudioTrack.setVolume(1.0F)
-            false
-        } else {
-            dummyAudioTrack.setVolume(0.0F)
-            true
-        }
+        dummyAudioTrack.setVolume(0.0F)
+    }
+
+    private fun unMute() {
+        dummyAudioTrack.setVolume(1.0F)
     }
 
     private fun setDataSource(dataSource: Any): Boolean {

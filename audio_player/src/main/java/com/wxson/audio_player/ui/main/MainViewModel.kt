@@ -166,10 +166,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     override fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo) {
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
-        if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
+//        if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
 //            startPlayerIntentService()
 //            bindPlayerIntentService()
-        }
+//        }
         if (wifiP2pInfo.groupFormed) {
             Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
         } else {
@@ -259,10 +259,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             MsgType.DUMMY_PLAYER_PAUSE.ordinal, ""))
     }
 
+    fun resume() {
+        Log.i(thisTag, "resume()")
+        dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
+            MsgType.DUMMY_PLAYER_RESUME.ordinal, ""))
+    }
+
     fun mute() {
         Log.i(thisTag, "mute()")
         dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
             MsgType.DUMMY_PLAYER_MUTE.ordinal, ""))
+    }
+
+    fun unMute() {
+        Log.i(thisTag, "unMute()")
+        dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
+            MsgType.DUMMY_PLAYER_UNMUTE.ordinal, ""))
     }
 
     //endregion
