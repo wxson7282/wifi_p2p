@@ -31,6 +31,17 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private lateinit var imageBtnStop: ImageButton
     private lateinit var imageBtnMute: ImageButton
     private lateinit var playerContext: PlayerContext
+    private val playingBtnStates: Int = 0b0111
+    private val stoppedBtnStates: Int = 0b1000
+    private val pausedBtnStates: Int = 0b0010
+    private val muteBtnStates: Int = 0b0001
+    private val nonEffective: Int = 0b00
+    private val pauseEffective: Int = 0b10
+    private val muteEffective: Int = 0b01
+
+    companion object {
+        fun newInstance() = MainFragment()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,6 +49,12 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     ): View {
         return inflater.inflate(R.layout.main_fragment, container, false)
     }
+
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        Log.d(runningTag, "onCreate")
+//        super.onCreate(savedInstanceState)
+//        retainInstance = true
+//    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -64,7 +81,9 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+//        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+        val androidViewModelFactory = ViewModelProvider.AndroidViewModelFactory.getInstance(this.requireActivity().application)
+        viewModel = ViewModelProvider(this, androidViewModelFactory).get(MainViewModel::class.java)
 
         //申请权限
         requestLocationPermission()
@@ -88,6 +107,11 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         playerContext = PlayerContext(viewModel)            //定义环境角色
         playerContext.setCurrentState(StoppedState())       //设置初始状态
         setButton(playerContext.getCurrentState())
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+//        outState.classLoader.loadClass("com.wxson.audio_player.ui.main.state.AbstractState")
     }
 
     private fun connectStatusHandler(isConnected: Boolean) {
@@ -187,38 +211,34 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private fun setButton(playerState: AbstractState) {
         when (playerState) {
             is StoppedState -> {
-                setImageBtnPauseEffective(false)
-                setImageBtnMuteEffective(false)
-                setImageBtnEnabled(imageBtnMute, false)
-                setImageBtnEnabled(imageBtnPause, false)
-                setImageBtnEnabled(imageBtnPlay, true)
-                setImageBtnEnabled(imageBtnStop, false)
+                setBtnEffective(nonEffective)
+                setPlayerBtn(stoppedBtnStates)
             }
             is PlayingState, is ResumeState, is UnMuteState -> {
-                setImageBtnPauseEffective(false)
-                setImageBtnMuteEffective(false)
-                setImageBtnEnabled(imageBtnMute, true)
-                setImageBtnEnabled(imageBtnPause, true)
-                setImageBtnEnabled(imageBtnPlay, false)
-                setImageBtnEnabled(imageBtnStop, true)
+                setBtnEffective(nonEffective)
+                setPlayerBtn(playingBtnStates)
             }
             is PausedState -> {
-                setImageBtnPauseEffective(true)
-                setImageBtnMuteEffective(false)
-                setImageBtnEnabled(imageBtnMute, false)
-                setImageBtnEnabled(imageBtnPause, true)
-                setImageBtnEnabled(imageBtnPlay, false)
-                setImageBtnEnabled(imageBtnStop, false)
+                setBtnEffective(pauseEffective)
+                setPlayerBtn(pausedBtnStates)
             }
             is MuteState -> {
-                setImageBtnMuteEffective(true)
-                setImageBtnPauseEffective(false)
-                setImageBtnEnabled(imageBtnMute, true)
-                setImageBtnEnabled(imageBtnPause, false)
-                setImageBtnEnabled(imageBtnPlay, false)
-                setImageBtnEnabled(imageBtnStop, false)
+                setBtnEffective(muteEffective)
+                setPlayerBtn(muteBtnStates)
             }
         }
+    }
+
+    private fun setPlayerBtn(btnStates: Int) {
+        setImageBtnEnabled(imageBtnPlay, (0b1000 and btnStates) != 0)
+        setImageBtnEnabled(imageBtnStop, (0b0100 and btnStates) != 0)
+        setImageBtnEnabled(imageBtnPause, (0b0010 and btnStates) != 0)
+        setImageBtnEnabled(imageBtnMute, (0b0001 and btnStates) != 0)
+    }
+
+    private fun setBtnEffective(effectState: Int) {
+        setImageBtnPauseEffective((0b10 and effectState) != 0)
+        setImageBtnMuteEffective((0b01 and effectState) != 0)
     }
 
     private fun setImageBtnEnabled(imageBtn: ImageButton, enabled: Boolean) {
