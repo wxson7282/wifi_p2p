@@ -30,7 +30,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private lateinit var imageBtnPause: ImageButton
     private lateinit var imageBtnStop: ImageButton
     private lateinit var imageBtnMute: ImageButton
-    private lateinit var playerContext: PlayerContext
+    private var playerContext: PlayerContext? = null
     private val playingBtnStates: Int = 0b0111
     private val stoppedBtnStates: Int = 0b1000
     private val pausedBtnStates: Int = 0b0010
@@ -38,6 +38,8 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private val nonEffective: Int = 0b00
     private val pauseEffective: Int = 0b10
     private val muteEffective: Int = 0b01
+    private var reservedBtnStates: Int = 0
+    private var reservedBtnEffectiveStates: Int = 0
 
     companion object {
         fun newInstance() = MainFragment()
@@ -50,11 +52,11 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         return inflater.inflate(R.layout.main_fragment, container, false)
     }
 
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        Log.d(runningTag, "onCreate")
-//        super.onCreate(savedInstanceState)
-//        retainInstance = true
-//    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d(runningTag, "onCreate")
+        super.onCreate(savedInstanceState)
+        retainInstance = true       // 横竖屏切换时不销毁fragment
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -81,7 +83,6 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-//        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
         val androidViewModelFactory = ViewModelProvider.AndroidViewModelFactory.getInstance(this.requireActivity().application)
         viewModel = ViewModelProvider(this, androidViewModelFactory).get(MainViewModel::class.java)
 
@@ -104,15 +105,14 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         viewModel.getLocalMsg().observe(viewLifecycleOwner, localMsgObserver)
         val connectStatusObserver: Observer<Boolean> = Observer { isConnected -> connectStatusHandler(isConnected!!) }
         viewModel.getConnectStatus().observe(viewLifecycleOwner, connectStatusObserver)
-        playerContext = PlayerContext(viewModel)            //定义环境角色
-        playerContext.setCurrentState(StoppedState())       //设置初始状态
-        setButton(playerContext.getCurrentState())
+        // 新建fragment时初始状态为StoppedState
+        if (playerContext == null) {
+            playerContext = PlayerContext(viewModel)            //定义环境角色
+            playerContext!!.setCurrentState(StoppedState())       //设置初始状态
+        }
+        setButton(playerContext!!.getCurrentState())
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-//        outState.classLoader.loadClass("com.wxson.audio_player.ui.main.state.AbstractState")
-    }
 
     private fun connectStatusHandler(isConnected: Boolean) {
         if (isConnected){
@@ -164,7 +164,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     }
 
     override fun onClick(v: View) {
-        playerContext.apply {
+        playerContext!!.apply {
             when (v.id) {
                 R.id.btnCreateGroup -> {
                     viewModel.createGroup()
@@ -230,15 +230,17 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     }
 
     private fun setPlayerBtn(btnStates: Int) {
+        reservedBtnStates = btnStates
         setImageBtnEnabled(imageBtnPlay, (0b1000 and btnStates) != 0)
         setImageBtnEnabled(imageBtnStop, (0b0100 and btnStates) != 0)
         setImageBtnEnabled(imageBtnPause, (0b0010 and btnStates) != 0)
         setImageBtnEnabled(imageBtnMute, (0b0001 and btnStates) != 0)
     }
 
-    private fun setBtnEffective(effectState: Int) {
-        setImageBtnPauseEffective((0b10 and effectState) != 0)
-        setImageBtnMuteEffective((0b01 and effectState) != 0)
+    private fun setBtnEffective(effectStates: Int) {
+        reservedBtnEffectiveStates = effectStates
+        setImageBtnPauseEffective((0b10 and effectStates) != 0)
+        setImageBtnMuteEffective((0b01 and effectStates) != 0)
     }
 
     private fun setImageBtnEnabled(imageBtn: ImageButton, enabled: Boolean) {
