@@ -31,8 +31,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val wifiP2pManager: WifiP2pManager
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
-    private var dummyPlayerRunnable: DummyPlayerRunnable
-    private var playThread: Thread
+    private val dummyPlayerRunnable: DummyPlayerRunnable
+    private val playThread: Thread
 
     @SuppressLint("StaticFieldLeak")
     var playerIntentService: PlayerIntentService? = null
@@ -46,6 +46,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             val binder = service as PlayerIntentService.MyBinder
             playerIntentService = binder.playerIntentService
             playerIntentService?.setMessageListener(messageListener)
+            playerIntentService?.queue = synchronousQueue
             PlayerIntentService.startActionTcp(app)
         }
 
@@ -64,12 +65,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                 }
                 Val.msgClientDisconnectRequest -> {
                     // 向客户端发出应答，客户端收到应答后关闭socket线程
-                    val msg = Message()
-                    msg.what = Val.msgCodeByteArray
-                    msg.obj = Val.msgDisconnectReply.toByteArray()
-                    playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg)
+                    val msg1 = Message()
+                    msg1.what = Val.msgCodeByteArray
+                    msg1.obj = Val.msgDisconnectReply.toByteArray()
+                    playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg1)
                     // 变更连接标识
                     Util.sendLiveData(connectStatusLiveData, false)
+                    clientConnected = false
+                    Log.d(thisTag, "messageListener.messageListener clientConnected = false")
+                    playerIntentService?.serverRunnable?.isClientSocketOn = false
+                    //*********************************************
+                    playerIntentService?.serverRunnable?.interruptThread()
+                    val msg2 = Message()
+                    msg2.what = Val.msgThreadInterrupted
+                    msg2.obj = null
+                    playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg2)
                 }
                 "remote_cmd_pausePlay" -> {
                     this@MainViewModel.pause()
@@ -80,37 +90,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
 
         override fun onLocalMsgOccurred(msgType: String, msg: String) {
-            Log.i(thisTag, "onLocalMsgOccurred $msgType : $msg")
+//            Log.i(thisTag, "onLocalMsgOccurred $msgType : $msg")
             when (msgType) {
-//                "PcmDataSent" -> {
-//
-//                }
-                "TcpSocketServiceStatus" -> {
-                }
+                "TcpSocketServiceStatus" -> {}
                 "TcpSocketClientStatus" -> {
+                    //set clientConnected=true,把PlayThreadHandler的实例通过参数传给DecoderCallback，
+                    //在DecoderCallback中观察，clientConnected=true时表示消费者已经启动，SynchronousQueue<PcmTransferData>可以使用
+                    //否则SynchronousQueue<PcmTransferData>不能使用
+                    clientConnected = msg == "ON"
+                    Log.d(thisTag,
+                        "mainViewModel.onLocalMsgOccurred msgType=TcpSocketClientStatus clientConnected = ${msg == "ON"}")
                 }
                 else -> {
                     Util.sendLiveData(localMsgLiveData, "$msgType:$msg")
                 }
             }
-        }
-    }
-
-    private val transferDataListener = object : ITransferDataListener {
-        override fun onTransferDataReady(pcmTransferData: PcmTransferData?) {
-            val msg = Message()
-            // 表示pcm流已经到结尾，因该结束播放并通知通信进程
-            if (pcmTransferData == null) {
-                // 向客户端发出结束消息
-                msg.what = Val.msgBufferFlagEndOfStream
-                msg.obj = null
-                Log.i(thisTag, "transferDataListener: End of stream")
-            } else {
-                // inform ServerOutputThread of TransferDataReady by outputHandler
-                msg.what = Val.msgCodeAudio
-                msg.obj = pcmTransferData
-            }
-            playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg)
         }
     }
 
@@ -136,7 +130,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         app.registerReceiver(receiver, getIntentFilter())
         bindPlayerIntentService()
         // 启动PlayThread
-        dummyPlayerRunnable = DummyPlayerRunnable(transferDataListener)
+        dummyPlayerRunnable = DummyPlayerRunnable()
         playThread = Thread(dummyPlayerRunnable)
         playThread.start()
     }
@@ -290,12 +284,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private fun unregisterBroadcastReceiver() {
         app.unregisterReceiver(receiver)
     }
-
-//    private fun startPlayerIntentService() {
-//        if (playerIntentService != null) {
-//            app.startService(Intent(app, PlayerIntentService::class.java))
-//        }
-//    }
 
     private fun bindPlayerIntentService() {
         val intent = Intent(app, PlayerIntentService::class.java)

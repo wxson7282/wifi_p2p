@@ -38,7 +38,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private var wifiP2pEnabled = false
     private val wifiP2pDeviceList = ArrayList<WifiP2pDevice>()
     val deviceAdapter: DeviceAdapter
-    private lateinit var remoteDevice: WifiP2pDevice
+    private var remoteDevice: WifiP2pDevice? = null
     private var pcmPlayer: PcmPlayer? = null
 
     //region LiveData
@@ -75,7 +75,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         deviceAdapter.setClickListener(object : DeviceAdapter.OnClickListener {
             override fun onItemClick(position: Int) {
                 remoteDevice = wifiP2pDeviceList[position]
-                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, remoteDevice.deviceName + "将要连接"))
+                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, remoteDevice!!.deviceName + "将要连接"))
                 connect()
             }
         })
@@ -154,7 +154,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private fun connect() {
         val config = WifiP2pConfig()
-        config.deviceAddress = remoteDevice.deviceAddress
+        config.deviceAddress = remoteDevice!!.deviceAddress
         config.wps.setup = WpsInfo.PBC
         sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "正在连接"))
         // permission check
@@ -219,7 +219,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         //显示WifiP2pInfo
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, wifiP2pInfo))
         //显示选中的wifiP2pDevice
-        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, remoteDevice))
+        if (remoteDevice != null) {
+            sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, remoteDevice))
+        }
         //判断本机为非群主，且群已经建立
         if (wifiP2pInfo.groupFormed && !wifiP2pInfo.isGroupOwner) {
             //建立并启动ClientThread

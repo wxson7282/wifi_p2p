@@ -7,15 +7,14 @@ import android.util.Log
 import com.wxson.p2p_comm.AudioUtil
 import java.io.FileDescriptor
 
-class PlayThreadHandler(
-    private val transferDataListener: ITransferDataListener) : Handler() {
+class PlayThreadHandler : Handler() {
     private val thisTag = this.javaClass.simpleName
     private lateinit var dummyAudioTrack: AudioTrack
     private lateinit var decoder: MediaCodec
     private lateinit var mediaFormat: MediaFormat
     private var mediaExtractor: MediaExtractor? = null
     private var mime: String? = null
-
+    lateinit var decoderCallback: DecoderCallback
 
     override fun handleMessage(msg: Message) {
         when (msg.what) {
@@ -111,8 +110,7 @@ class PlayThreadHandler(
 
     private fun initDecoder(mime: String) {
         decoder = MediaCodec.createDecoderByType(mime)
-        val decoderCallback = DecoderCallback(mediaExtractor!!, dummyAudioTrack)
-        decoderCallback.setTransferDataListener(transferDataListener)
+        decoderCallback = DecoderCallback(mediaExtractor!!, dummyAudioTrack)
         decoder.setCallback(decoderCallback.callback)
         decoder.configure(mediaFormat, null, null, 0)
     }

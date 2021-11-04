@@ -9,8 +9,7 @@ import com.wxson.p2p_comm.PcmTransferData
 
 class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
     private val thisTag = this.javaClass.simpleName
-    // to inform MainViewModel onOutputBufferAvailable
-    private lateinit var transferDataListener: ITransferDataListener
+    private var frameCount: Int = 0
 
     val callback = object : MediaCodec.Callback() {
 
@@ -37,7 +36,9 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
             try {
                 if ((bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM)) != 0) {
                     // send end flag to client
-                    transferDataListener.onTransferDataReady(null)
+                    if (clientConnected) {
+                        synchronousQueue.put(PcmTransferData(0, ByteArray(0), 0))
+                    }
                     // end of stream
                     extractor.release()
                     codec.stop()
@@ -48,14 +49,19 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
                     outputBuffer?.get(pcmData)
                     // send out pcmTransferData
                     val sampleRateInHz = codec.outputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                    transferDataListener.onTransferDataReady(PcmTransferData(sampleRateInHz, pcmData))
                     audioTrack.write(pcmData, 0, pcmData.size)
-                    //*********************
-//                    Thread.sleep(6)
-                    //*********************
+                    if (clientConnected) {
+//                        Log.d(thisTag, "synchronousQueue.put(PcmTransferData(sampleRateInHz, pcmData, frameCount++))")
+                        synchronousQueue.put(PcmTransferData(sampleRateInHz, pcmData, frameCount++))   // 生产数据
+                    }
                     codec.releaseOutputBuffer(bufferIndex, false)
                 }
-            } catch (e: Exception) {
+            } catch (e: InterruptedException ) {
+                e.printStackTrace()
+            } catch (e: NullPointerException) {
+                e.printStackTrace()
+            }
+            catch (e: Exception) {
                 e.printStackTrace()
             }
         }
@@ -67,9 +73,5 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
         override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
             Log.i(thisTag, "onOutputFormatChanged")
         }
-    }
-
-    fun setTransferDataListener(listener: ITransferDataListener) {
-        transferDataListener = listener
     }
 }
