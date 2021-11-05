@@ -131,7 +131,7 @@ class ServerRunnable(private var clientSocket: Socket) : Runnable {
     private val objectOutputStream: ObjectOutputStream = ObjectOutputStream(clientSocket.getOutputStream())
     @Volatile
     var isClientSocketOn = true
-    private val subThread2 = object : Thread() {
+    val subThread2 = object : Thread() {
         override fun run() {
             Log.e(runningTag, "subThread2 ${currentThread().name} started")
             while (isClientSocketOn && !currentThread().isInterrupted) {
@@ -214,12 +214,18 @@ class ServerRunnable(private var clientSocket: Socket) : Runnable {
     }
 
     fun interruptThread() {
-        if (!clientSocket.isClosed) {
-            if (!clientSocket.isInputShutdown)
-                objectInputStream.close()
-            if (!clientSocket.isOutputShutdown)
-                objectOutputStream.close()
-            clientSocket.close()
+        try {
+            if (!clientSocket.isClosed) {
+                if (!clientSocket.isInputShutdown)
+                    objectInputStream.close()
+                if (!clientSocket.isOutputShutdown)
+                    objectOutputStream.close()
+                clientSocket.close()
+            }
+            if (!subThread2.isInterrupted)
+                subThread2.interrupt()
+        } catch (e: Exception) {
+            Log.e(runningTag, "interruptThread() Exception")
         }
     }
 

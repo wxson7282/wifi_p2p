@@ -74,12 +74,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                     clientConnected = false
                     Log.d(thisTag, "messageListener.messageListener clientConnected = false")
                     playerIntentService?.serverRunnable?.isClientSocketOn = false
-                    //*********************************************
-                    playerIntentService?.serverRunnable?.interruptThread()
                     val msg2 = Message()
                     msg2.what = Val.msgThreadInterrupted
                     msg2.obj = null
                     playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg2)
+                    //*********************************************
+                    playerIntentService?.serverRunnable?.interruptThread()
                 }
                 "remote_cmd_pausePlay" -> {
                     this@MainViewModel.pause()
