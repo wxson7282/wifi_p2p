@@ -50,6 +50,10 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
                 //等待客户端来连接
                 clientSocket = serverSocket.accept()   //blocks until a connection is made
                 Log.i(runningTag, "client IP address: " + clientSocket.inetAddress.hostAddress)
+                // 用本机地址作为结束循环的标志
+                if (clientSocket.inetAddress.hostAddress == "127.0.0.1") {
+                    break
+                }
                 serverRunnable = ServerRunnable(clientSocket)
                 Thread(serverRunnable).start()
                 messageListener.onLocalMsgOccurred("TcpSocketClientStatus", "ON")
@@ -62,6 +66,7 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
             serverSocket?.close()
             isTcpSocketServiceOn = false
             messageListener.onLocalMsgOccurred("TcpSocketClientStatus", "OFF")
+            Log.i(runningTag, "handleActionTcp: end")
         }
     }
 
