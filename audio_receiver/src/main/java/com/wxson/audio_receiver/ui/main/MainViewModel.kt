@@ -123,7 +123,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         //向对方发送连接断开请求
         val msg = Message()
         msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
-//        msg.obj = "disconnecting"
         msg.obj = Val.msgClientDisconnectRequest
         clientRunnable.threadHandler.sendMessage(msg)
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))

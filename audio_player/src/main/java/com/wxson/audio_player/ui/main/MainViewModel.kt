@@ -69,6 +69,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                     msg1.what = Val.msgCodeByteArray
                     msg1.obj = Val.msgDisconnectReply.toByteArray()
                     playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg1)
+                    Thread.sleep(300)
                     // 变更连接标识
                     Util.sendLiveData(connectStatusLiveData, false)
                     clientConnected = false

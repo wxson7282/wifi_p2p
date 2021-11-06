@@ -8,19 +8,16 @@ import com.wxson.p2p_comm.PcmTransferData
 import com.wxson.p2p_comm.Val
 import java.io.*
 import java.lang.ref.WeakReference
-import java.net.ConnectException
-import java.net.NoRouteToHostException
-import java.net.Socket
-import java.net.UnknownHostException
+import java.net.*
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 class ClientRunnable(private val mainHandler: Handler, private val serverIp: String, private val serverSocketPort: Int) : Runnable {
     private val thisTag = this.javaClass.simpleName
-    private lateinit var socket: Socket
+    lateinit var socket: Socket
     // 该线程所处理的Socket所对应的输入出流
     private lateinit var objectOutputStream: ObjectOutputStream
-    private lateinit var objectInputStream: ObjectInputStream
+    lateinit var objectInputStream: ObjectInputStream
     private lateinit var thisThread: Thread
     private var pcmPlayer: PcmPlayer? = null
 
@@ -103,6 +100,9 @@ class ClientRunnable(private val mainHandler: Handler, private val serverIp: Str
         catch (e: EOFException){
             Log.e(thisTag, "EOFException")
             sendLocalMsg("服务器关闭！！")
+        }
+        catch (e: SocketException) {
+            Log.e(thisTag, "SocketException")
         }
         catch (re: RuntimeException){
             Log.e(thisTag, "RuntimeException")
