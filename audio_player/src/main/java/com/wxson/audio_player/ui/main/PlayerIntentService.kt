@@ -13,6 +13,7 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.*
 import java.util.concurrent.SynchronousQueue
 
 private const val ACTION_TCP = "com.wxson.audio_player.connect.action.TCP"
@@ -34,7 +35,6 @@ class PlayerIntentService : IntentService("PlayerIntentService") {
                 handleActionTcp()
             }
         }
-        handleActionTcp()
     }
 
     /**
@@ -136,7 +136,7 @@ class ServerRunnable(private var clientSocket: Socket) : Runnable {
     private val objectOutputStream: ObjectOutputStream = ObjectOutputStream(clientSocket.getOutputStream())
     @Volatile
     var isClientSocketOn = true
-    val subThread2 = object : Thread() {
+    private val subThread2 = object : Thread() {
         override fun run() {
             Log.e(runningTag, "subThread2 ${currentThread().name} started")
             while (isClientSocketOn && !currentThread().isInterrupted) {
