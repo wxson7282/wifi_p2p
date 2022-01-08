@@ -34,12 +34,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val receiver: BroadcastReceiver
     private var mainHandler: Handler
     private lateinit var clientRunnable: ClientRunnable
+    private lateinit var connectRunnable: ConnectRunnable
     private lateinit var clientThread: Thread
+    private lateinit var connectThread: Thread
     private var wifiP2pEnabled = false
     private val wifiP2pDeviceList = ArrayList<WifiP2pDevice>()
     val deviceAdapter: DeviceAdapter
     private var remoteDevice: WifiP2pDevice? = null
     private var pcmPlayer: PcmPlayer? = null
+    private val isBio = false
 
     //region LiveData
     private val msgLiveData = MutableLiveData<ViewModelMsg>()
@@ -53,7 +56,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 MsgType.ARRIVED_STRING.ordinal -> {
-                    viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
+//                    viewModel.get()?.sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "remote msg:" + msg.obj.toString()))
                 }
                 MsgType.PCM_TRANSFER_DATA.ordinal -> viewModel.get()?.playPcmData(msg.obj as PcmTransferData)
                 MsgType.LOCAL_MSG.ordinal ->
@@ -124,10 +127,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         val msg = Message()
         msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
         msg.obj = Val.msgClientDisconnectRequest
-        clientRunnable.threadHandler.sendMessage(msg)
-        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
-        //阻塞其他綫程300毫秒，防止消息发送前切断连接
-        clientThread.join(300)
+        if (isBio) {
+            clientRunnable.threadHandler.sendMessage(msg)
+            sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
+            //阻塞其他綫程300毫秒，防止消息发送前切断连接
+            clientThread.join(300)
+        } else {
+            connectRunnable.connectThreadHandler.sendMessage(msg)
+            sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
+            connectThread.join(300)
+        }
+
         //
         wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onFailure(reasonCode: Int) {
@@ -149,6 +159,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         clientThread = Thread(clientRunnable)
         clientThread.start()
         Thread.sleep(100)   //延时片刻，确保线程Looper已经启动
+    }
+
+    private fun startConnectThread(hostIp: String) {
+        Log.i(thisTag, "startConnectThread")
+        connectRunnable = ConnectRunnable(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
+        connectThread = Thread(connectRunnable)
+        connectThread.start()
+        Thread.sleep(100)
     }
 
     private fun connect() {
@@ -198,6 +216,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             pcmPlayer = PcmPlayer(pcmTransferData.sampleRateInHz)
         }
         pcmPlayer?.writePcmData(pcmTransferData.pcmData)
+//        Log.d(thisTag, "playPcmData")
     }
 
     private fun sendMsgLiveData(viewModelMsg: ViewModelMsg) {
@@ -223,15 +242,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
         //判断本机为非群主，且群已经建立
         if (wifiP2pInfo.groupFormed && !wifiP2pInfo.isGroupOwner) {
-            //建立并启动ClientThread
-            startClientThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
-            //启动ClientThread成功后，继续以下处理
+            if (isBio) {
+                //建立并启动ClientThread
+                startClientThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
+                //启动ClientThread成功后，继续以下处理
+            } else {
+                startConnectThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
+            }
+
             //向对方发送连接成功消息
             val msg = Message()
             msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
             msg.obj = Val.msgClientConnected
-            clientRunnable.threadHandler.sendMessage(msg)
-
+            if (isBio) {
+                clientRunnable.threadHandler.sendMessage(msg)
+            } else {
+                connectRunnable.connectThreadHandler.sendMessage(msg)
+            }
         }
     }
 

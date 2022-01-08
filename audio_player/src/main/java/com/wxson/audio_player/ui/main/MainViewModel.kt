@@ -33,9 +33,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val receiver: BroadcastReceiver
     private val dummyPlayerRunnable: DummyPlayerRunnable
     private val playThread: Thread
+    private val isBio = false
 
     @SuppressLint("StaticFieldLeak")
     var playerIntentService: PlayerIntentService? = null
+    @SuppressLint("StaticFieldLeak")
+    var connectIntentService: ConnectIntentService? = null
 
     /**
      *  on service connected, start PlayerIntentService.
@@ -43,11 +46,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             Log.i(thisTag, "onServiceConnected")
-            val binder = service as PlayerIntentService.MyBinder
-            playerIntentService = binder.playerIntentService
-            playerIntentService?.setMessageListener(messageListener)
-            playerIntentService?.queue = synchronousQueue
-            PlayerIntentService.startActionTcp(app)
+            if (isBio) {
+                val binder = service as PlayerIntentService.MyBinder
+                playerIntentService = binder.playerIntentService
+                playerIntentService?.setMessageListener(messageListener)
+                playerIntentService?.queue = synchronousQueue
+                PlayerIntentService.startActionTcp(app)
+            } else {
+                val binder = service as ConnectIntentService.MyBinder
+                connectIntentService = binder.connectIntentService
+                connectIntentService?.setMessageListener(messageListener)
+                val intent = Intent(app, ConnectIntentService::class.java)
+                intent.action = ACTION_TCP_IP
+                app.startService(intent)
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -56,6 +68,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     private val messageListener = object : IMessageListener {
+
         override fun onRemoteMsgArrived(arrivedString: String, clientInetAddress: InetAddress) {
             Log.i(thisTag, "onRemoteMsgArrived")
             Util.sendLiveData(localMsgLiveData, "arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
@@ -64,23 +77,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                     Util.sendLiveData(connectStatusLiveData, true)
                 }
                 Val.msgClientDisconnectRequest -> {
-                    // 向客户端发出应答，客户端收到应答后关闭socket线程
-                    val msg1 = Message()
-                    msg1.what = Val.msgCodeByteArray
-                    msg1.obj = Val.msgDisconnectReply.toByteArray()
-                    playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg1)
-                    Thread.sleep(300)
-                    // 变更连接标识
-                    Util.sendLiveData(connectStatusLiveData, false)
-                    clientConnected = false
-                    Log.d(thisTag, "messageListener.messageListener clientConnected = false")
-                    playerIntentService?.serverRunnable?.isClientSocketOn = false
-                    val msg2 = Message()
-                    msg2.what = Val.msgThreadInterrupted
-                    msg2.obj = null
-                    playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg2)
-                    //*********************************************
-                    playerIntentService?.serverRunnable?.interruptThread()
+                    if (isBio) {
+                        // 向客户端发出应答，客户端收到应答后关闭socket线程
+                        val msg1 = Message()
+                        msg1.what = Val.msgCodeByteArray
+                        msg1.obj = Val.msgDisconnectReply.toByteArray()
+                        playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg1)
+                        Thread.sleep(300)
+                        // 变更连接标识
+                        Util.sendLiveData(connectStatusLiveData, false)
+                        clientConnected = false
+                        Log.d(thisTag, "messageListener.messageListener clientConnected = false")
+                        playerIntentService?.serverRunnable?.isClientSocketOn = false
+                        val msg2 = Message()
+                        msg2.what = Val.msgThreadInterrupted
+                        msg2.obj = null
+                        playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg2)
+                        //*********************************************
+                        playerIntentService?.serverRunnable?.interruptThread()
+                    } else {
+                        val msg = Message()
+                        msg.what = Val.msgCodeByteArray
+                        msg.obj = Val.msgDisconnectReply.toByteArray()
+                        connectIntentService?.outputHandler?.sendMessage(msg)
+                        Thread.sleep(300)
+                        // 变更连接标识
+                        Util.sendLiveData(connectStatusLiveData, false)
+                        msg.what = Val.msgThreadInterrupted
+                        msg.obj = null
+                        connectIntentService?.outputHandler?.sendMessage(msg)
+                        connectIntentService?.endTasks()
+                    }
                 }
                 "remote_cmd_pausePlay" -> {
                     this@MainViewModel.pause()
@@ -125,11 +152,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "init")
         wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
+        createGroup()       //建立p2p组，否则无法取得hostIpAddress，ServerSocketChannel无法绑定本机ip
         // set a fixed name to the self device used in wifi p2p group
         setDeviceName(app.getString(R.string.app_name))
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         app.registerReceiver(receiver, getIntentFilter())
-        bindPlayerIntentService()
+        if ( isBio) {
+            bindPlayerIntentService()
+        } else {
+            bindConnectIntentService()
+        }
         // 启动PlayThread
         dummyPlayerRunnable = DummyPlayerRunnable()
         playThread = Thread(dummyPlayerRunnable)
@@ -141,8 +173,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         if(isTcpSocketServiceOn){
             playerIntentService?.stopTcpSocketService()
         }
-        unbindPlayerIntentService()
-        playerIntentService = null
+        if (isBio) {
+            unbindPlayerIntentService()
+            playerIntentService = null
+        } else {
+            unbindConnectIntentService()
+            connectIntentService = null
+        }
         unregisterBroadcastReceiver()
         removeGroup()
         dummyPlayerRunnable.threadHandler.looper.quitSafely()
@@ -161,10 +198,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     override fun onConnectionInfoAvailable(wifiP2pInfo: WifiP2pInfo) {
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
-//        if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
-//            startPlayerIntentService()
-//            bindPlayerIntentService()
-//        }
+
         if (wifiP2pInfo.groupFormed) {
             Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
         } else {
@@ -223,7 +257,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                 Log.i(thisTag, "removeGroup onSuccess")
                 Util.sendLiveData(connectStatusLiveData, false)
                 // notify MediaCodecCallback of connect status
-                // TODO("Not yet implemented")
                 Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
             }
 
@@ -282,6 +315,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
     }
 
+    private fun unbindConnectIntentService() {
+        Log.i(thisTag, "unbindConnectIntentService")
+        if (connectIntentService != null) app.unbindService(serviceConnection)
+    }
+
     private fun unregisterBroadcastReceiver() {
         app.unregisterReceiver(receiver)
     }
@@ -289,6 +327,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private fun bindPlayerIntentService() {
         val intent = Intent(app, PlayerIntentService::class.java)
         app.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    private fun bindConnectIntentService() {
+        app.bindService(Intent(app, ConnectIntentService::class.java),
+            serviceConnection,
+            Context.BIND_AUTO_CREATE)
     }
 
     private fun setDeviceName(deviceName: String) {

@@ -6,4 +6,9 @@ object Val {
     const val msgDisconnectReply = "终止连接应答"
     const val msgCodeByteArray = 0x123
     const val msgThreadInterrupted = 0x334
+    const val AudioType = 0xfa.toByte()
+    const val TextType = 0xfc.toByte()
+    const val AudioBuffCapacity = 16384
+    const val InputBuffCapacity = 16384
+    const val CacheBuffCapacity = 16384
 }
