@@ -34,6 +34,6 @@ object AudioUtil {
         val buffSize = AudioTrack.getMinBufferSize(sampleRateInHz, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
         val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
         val audioFormat = AudioFormat.Builder().setSampleRate(sampleRateInHz).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build()
-        return AudioTrack(audioAttributes, audioFormat, buffSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
+        return AudioTrack(audioAttributes, audioFormat, buffSize * 4, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
     }
 }

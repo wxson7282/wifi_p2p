@@ -6,7 +6,6 @@ import android.os.*
 import android.util.Log
 import com.wxson.audio_player.R
 import com.wxson.p2p_comm.PcmTransferData
-import com.wxson.p2p_comm.SerializableUtil
 import com.wxson.p2p_comm.Util
 import com.wxson.p2p_comm.Val
 import java.io.IOException
@@ -121,7 +120,7 @@ class ConnectIntentService : IntentService("ConnectIntentService") {
     private class OutputMsgHandler(private val selector: Selector, private val charset: Charset) : Handler() {
         private val runningTag = this.javaClass.simpleName
         private val typeBuff = ByteBuffer.allocate(1)
-        private val sizeBuff = ByteBuffer.allocate(2)
+        private val sizeBuff = ByteBuffer.allocate(4)
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 Val.msgCodeByteArray -> {
@@ -165,7 +164,7 @@ class ConnectIntentService : IntentService("ConnectIntentService") {
         //考虑到传输通道使用的是解码后outputBuffer中的pcm数据，因此选择用outputBuffer大小+两个Int的长度作为传输用buffer的尺寸。
         val buffer = ByteBuffer.allocate(Val.AudioBuffCapacity)
         val typeBuff = ByteBuffer.allocate(1)
-        val sizeBuff = ByteBuffer.allocate(2)
+        val sizeBuff = ByteBuffer.allocate(4)
         while (selector.isOpen) {
             //从阻塞队列中取出一帧音频，发送到每一个已连接的通道。如果没有音频数据到来，此处为阻塞状态
             val pcmTransferData = synchronousQueue.take() as PcmTransferData
@@ -173,8 +172,8 @@ class ConnectIntentService : IntentService("ConnectIntentService") {
                 val channel = selectionKey.channel()
                 if (channel is SocketChannel) {
                     //音频数据转换为字节数组
-//                    val pcmTransferDataByteArray = Util.pcmTransferDataToByteArray(pcmTransferData)
-                    val pcmTransferDataByteArray = SerializableUtil.serialize(pcmTransferData)
+                    val pcmTransferDataByteArray = Util.pcmTransferDataToByteArray(pcmTransferData)
+//                    val pcmTransferDataByteArray = SerializableUtil.serialize(pcmTransferData)
                     if (pcmTransferDataByteArray != null) {
                         //输出音频数据类型
                         typeBuff.put(Val.AudioType)
