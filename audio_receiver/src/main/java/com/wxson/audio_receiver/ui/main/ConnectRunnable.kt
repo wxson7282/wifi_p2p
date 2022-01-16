@@ -28,24 +28,35 @@ class ConnectRunnable(private val mainHandler: Handler, private val serverIp: St
     private var messageSize: Int = 0
     private var messageRemainSize: Int = 0
     private var messageReadableSize: Int = 0
+    private var runnable = false
     var connectThreadHandler = Handler { false }
 
     // 定义线程的Handler对象，用以响应线程调用者发来的消息
     class ThreadHandler(private var connectRunnable: WeakReference<ConnectRunnable>) : Handler() {
         override fun handleMessage(msg: Message) {
-            if (msg.what == MsgType.SEND_MSG_TO_REMOTE.ordinal) {
-                // 将客户端的文字信息写入网络
-                connectRunnable.get()?.sockChannel?.write(connectRunnable.get()?.charset?.encode(msg.obj.toString()))
-                Log.i(connectRunnable.get()?.thisTag, "handleMessage " + msg.obj.toString())
+            when (msg.what) {
+                MsgType.SEND_MSG_TO_REMOTE.ordinal -> {
+                    // 将客户端的文字信息写入网络
+                    connectRunnable.get()?.sockChannel?.write(connectRunnable.get()?.charset?.encode(msg.obj.toString()))
+                    Log.i(connectRunnable.get()?.thisTag, "handleMessage " + msg.obj.toString())
+                }
+                MsgType.LOCAL_MSG.ordinal -> {
+                    if (msg.obj == Val.msgStopRunnable) {
+                        super.getLooper().quitSafely()
+                        connectRunnable.get()?.runnable = false
+                    }
+                }
             }
         }
     }
 
     //定义读取线程
     private val inputThread = thread(false) {
+        Log.i(thisTag, "inputThread start")
+        runnable = true
         try {
             cacheBuff.clear()       //清除缓存
-            while (selector.select() > 0) {
+            while (selector.select() > 0 && runnable) {
                 for (selectionKey in selector.selectedKeys()) {
                     selector.selectedKeys().remove(selectionKey)
                     if (selectionKey.isReadable) {
@@ -99,6 +110,8 @@ class ConnectRunnable(private val mainHandler: Handler, private val serverIp: St
         } catch (e: IOException) {
             e.printStackTrace()
         }
+//        Looper.myLooper()?.quitSafely()
+        Log.i(thisTag, "inputThread end")
     }
 
     private fun consume(messagePacket: ByteArray) {
@@ -110,10 +123,6 @@ class ConnectRunnable(private val mainHandler: Handler, private val serverIp: St
                 msg.what = MsgType.ARRIVED_STRING.ordinal
                 msg.obj = arrivedString
                 mainHandler.sendMessage(msg)
-                // 如果收到中断连接应答，则停止当前线程
-                if (arrivedString == Val.msgDisconnectReply) {
-                    TODO("Not yet implemented")
-                }
             }
             Val.AudioType -> {
                 if (messagePacket.size > 15) {
@@ -144,6 +153,7 @@ class ConnectRunnable(private val mainHandler: Handler, private val serverIp: St
 
     @Throws(IOException::class)
     override fun run() {
+        Log.i(thisTag, "ConnectRunnable start")
         selector = Selector.open()
         val inetSocketAddress = InetSocketAddress(serverIp, serverSocketPort)
         sockChannel = SocketChannel.open(inetSocketAddress)
@@ -154,5 +164,6 @@ class ConnectRunnable(private val mainHandler: Handler, private val serverIp: St
         Looper.prepare()
         connectThreadHandler = ThreadHandler(WeakReference(this))
         Looper.loop()
+        Log.i(thisTag, "ConnectRunnable end")
     }
 }

@@ -93,20 +93,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                         msg2.what = Val.msgThreadInterrupted
                         msg2.obj = null
                         playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg2)
-                        //*********************************************
                         playerIntentService?.serverRunnable?.interruptThread()
                     } else {
-                        val msg = Message()
-                        msg.what = Val.msgCodeByteArray
-                        msg.obj = Val.msgDisconnectReply.toByteArray()
-                        connectIntentService?.outputHandler?.sendMessage(msg)
-                        Thread.sleep(300)
                         // 变更连接标识
                         Util.sendLiveData(connectStatusLiveData, false)
-                        msg.what = Val.msgThreadInterrupted
-                        msg.obj = null
-                        connectIntentService?.outputHandler?.sendMessage(msg)
-                        connectIntentService?.endTasks()
                     }
                 }
                 "remote_cmd_pausePlay" -> {

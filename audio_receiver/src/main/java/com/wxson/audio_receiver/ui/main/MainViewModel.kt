@@ -33,16 +33,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
     private var mainHandler: Handler
-    private lateinit var clientRunnable: ClientRunnable
     private lateinit var connectRunnable: ConnectRunnable
-    private lateinit var clientThread: Thread
     private lateinit var connectThread: Thread
     private var wifiP2pEnabled = false
     private val wifiP2pDeviceList = ArrayList<WifiP2pDevice>()
     val deviceAdapter: DeviceAdapter
     private var remoteDevice: WifiP2pDevice? = null
     private var pcmPlayer: PcmPlayer? = null
-    private val isBio = false
 
     //region LiveData
     private val msgLiveData = MutableLiveData<ViewModelMsg>()
@@ -86,9 +83,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     override fun onCleared() {
-//        clientRunnable.closeSocket()
-//        if (clientThread.isAlive)  clientThread.interrupt()
-
+        val msg = Message()
+        msg.what = MsgType.LOCAL_MSG.ordinal
+        msg.obj = Val.msgStopRunnable
+        if (connectThread.isAlive)
+            connectRunnable.connectThreadHandler.sendMessage(msg)
         app.unregisterReceiver(receiver)
         super.onCleared()
     }
@@ -127,18 +126,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         val msg = Message()
         msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
         msg.obj = Val.msgClientDisconnectRequest
-        if (isBio) {
-            clientRunnable.threadHandler.sendMessage(msg)
-            sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
-            //阻塞其他綫程300毫秒，防止消息发送前切断连接
-            clientThread.join(300)
-        } else {
-            connectRunnable.connectThreadHandler.sendMessage(msg)
-            sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
-            connectThread.join(300)
-        }
-
-        //
+        connectRunnable.connectThreadHandler.sendMessage(msg)
+        sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
+        connectThread.join(300)
         wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onFailure(reasonCode: Int) {
                 Log.i(thisTag, "disconnect onFailure:$reasonCode")
@@ -146,21 +136,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
             override fun onSuccess() {
                 Log.i(thisTag, "disconnect onSuccess")
-                sendMsgLiveData(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
             }
         })
+        //停止connectRunnable
+        val msg2 = Message()
+        msg2.what = MsgType.LOCAL_MSG.ordinal
+        msg2.obj = Val.msgStopRunnable
+        connectRunnable.connectThreadHandler.sendMessage(msg2)
     }
     //endregion
 
     //region private method
-    private fun startClientThread(hostIp: String) {
-        Log.i(thisTag, "startClientThread")
-        clientRunnable = ClientRunnable(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
-        clientThread = Thread(clientRunnable)
-        clientThread.start()
-        Thread.sleep(100)   //延时片刻，确保线程Looper已经启动
-    }
-
     private fun startConnectThread(hostIp: String) {
         Log.i(thisTag, "startConnectThread")
         connectRunnable = ConnectRunnable(mainHandler, hostIp, app.resources.getInteger(R.integer.portNumber))
@@ -242,29 +228,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         }
         //判断本机为非群主，且群已经建立
         if (wifiP2pInfo.groupFormed && !wifiP2pInfo.isGroupOwner) {
-            if (isBio) {
-                //建立并启动ClientThread
-                startClientThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
-                //启动ClientThread成功后，继续以下处理
-            } else {
-                startConnectThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
-            }
-
+            startConnectThread(wifiP2pInfo.groupOwnerAddress.hostAddress)
             //向对方发送连接成功消息
             val msg = Message()
             msg.what = MsgType.SEND_MSG_TO_REMOTE.ordinal
             msg.obj = Val.msgClientConnected
-            if (isBio) {
-                clientRunnable.threadHandler.sendMessage(msg)
-            } else {
-                connectRunnable.connectThreadHandler.sendMessage(msg)
-            }
+            connectRunnable.connectThreadHandler.sendMessage(msg)
         }
     }
 
     override fun onDisconnection() {
         Log.i(thisTag, "onDisconnection")
-        sendMsgLiveData(ViewModelMsg(MsgType.SET_BUTTON_DISABLED.ordinal,"btnDisconnect"))
         sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "已断开连接"))
         clearWifiP2pDeviceList()
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, null))

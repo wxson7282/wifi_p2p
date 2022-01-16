@@ -106,6 +106,12 @@ class ConnectIntentService : IntentService("ConnectIntentService") {
                         }
                         Log.i(runningTag, "handleActionTcp arrivedString: $arrivedString")
                         messageListener.onRemoteMsgArrived(arrivedString, clientSocket.inetAddress)
+                        if (arrivedString == Val.msgClientDisconnectRequest) {  //如果收到客户中断连接请求，应该释放socketChannel selectionKey
+                            socketChannel.close()
+                            selectionKey.cancel()
+                            selectionKey.channel()?.close()
+                            break
+                        }
                         selectionKey.interestOps(SelectionKey.OP_READ)
                     } catch (ex: IOException) {
                         selectionKey.cancel()
@@ -174,43 +180,41 @@ class ConnectIntentService : IntentService("ConnectIntentService") {
                     //音频数据转换为字节数组
                     val pcmTransferDataByteArray = Util.pcmTransferDataToByteArray(pcmTransferData)
 //                    val pcmTransferDataByteArray = SerializableUtil.serialize(pcmTransferData)
-                    if (pcmTransferDataByteArray != null) {
-                        //输出音频数据类型
-                        typeBuff.put(Val.AudioType)
-                        typeBuff.flip()
-                        channel.write(typeBuff)
-                        typeBuff.clear()
-                        //输出音频数据长度
-                        sizeBuff.put(Util.intToByteArray(pcmTransferDataByteArray.count()))
-                        sizeBuff.flip()
-                        channel.write(sizeBuff)
-                        sizeBuff.clear()
-                        //输出音频数据
+                    //输出音频数据类型
+                    typeBuff.put(Val.AudioType)
+                    typeBuff.flip()
+                    channel.write(typeBuff)
+                    typeBuff.clear()
+                    //输出音频数据长度
+                    sizeBuff.put(Util.intToByteArray(pcmTransferDataByteArray.count()))
+                    sizeBuff.flip()
+                    channel.write(sizeBuff)
+                    sizeBuff.clear()
+                    //输出音频数据
 //                    buffer.clear()
-                        buffer.put(pcmTransferDataByteArray)
-                        buffer.flip()
-                        while (buffer.hasRemaining()) {
-                            channel.write(buffer)
-                        }
-                        buffer.clear()
-                        Log.i(runningTag, "outputAudioThread: audio data output")
+                    buffer.put(pcmTransferDataByteArray)
+                    buffer.flip()
+                    while (buffer.hasRemaining()) {
+                        channel.write(buffer)
                     }
+                    buffer.clear()
+//                        Log.i(runningTag, "outputAudioThread: audio data output")
                 }
             }
         }
     }
 
-    fun endTasks() {
-        try {
-            for (selectionKey in selector.keys()) {
-                selectionKey.cancel()
-                selectionKey.channel()?.close()
-            }
-            selector.close()
-        } catch (ex: Exception) {
-            ex.printStackTrace()
-        }
-    }
+//    fun endTasks() {
+//        try {
+//            for (selectionKey in selector.keys()) {
+//                selectionKey.cancel()
+//                selectionKey.channel()?.close()
+//            }
+////            selector.close()
+//        } catch (ex: Exception) {
+//            ex.printStackTrace()
+//        }
+//    }
 
     /**
      * Handle action Udp in the provided background thread

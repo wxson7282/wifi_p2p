@@ -31,7 +31,6 @@ class MainFragment : Fragment(), View.OnClickListener {
     private var tvRemoteDeviceAdress: TextView? = null
     private var tvGroupOwnerAddress: TextView? = null
     private var tvMyDeviceStatus: TextView? = null
-//    private var tvMyConnectStatus: TextView? = null
     private var tvIsGroupOwner: TextView? = null
     private var tvGroupFormed: TextView? = null
     private var imgConnectStatus: ImageView? = null
@@ -123,16 +122,8 @@ class MainFragment : Fragment(), View.OnClickListener {
             MsgType.SHOW_LOADING_DIALOG.ordinal -> loadingDialog.show(viewModelMsg.obj as String, cancelable = true, canceledOnTouchOutside = false)
             MsgType.DISMISS_LOADING_DIALOG.ordinal -> loadingDialog.dismiss()
             MsgType.CANCEL_LOADING_DIALOG.ordinal -> loadingDialog.cancel()
-            MsgType.SET_BUTTON_ENABLED.ordinal -> {
-                when (viewModelMsg.obj as String) {
-                    "btnDisconnect" -> btnDisconnect?.isEnabled = true
-                }
-            }
-            MsgType.SET_BUTTON_DISABLED.ordinal -> {
-                when (viewModelMsg.obj as String) {
-                    "btnDisconnect" -> btnDisconnect?.isEnabled = false
-                }
-            }
+            MsgType.SET_BUTTON_ENABLED.ordinal -> {}
+            MsgType.SET_BUTTON_DISABLED.ordinal -> {}
         }
     }
 
