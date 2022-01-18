@@ -120,7 +120,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             }
 
             override fun onFailure(reasonCode: Int) {
-                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "discoverPeers failure"))
+                sendMsgLiveData(ViewModelMsg(MsgType.MSG.ordinal, "discoverPeers failure. reasonCode=$reasonCode"))
                 sendMsgLiveData(ViewModelMsg(MsgType.CANCEL_LOADING_DIALOG.ordinal, ""))
             }
         })
