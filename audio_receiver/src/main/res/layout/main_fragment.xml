@@ -8,6 +8,17 @@
     tools:context=".ui.main.MainFragment">
 
 
+    <CheckBox
+        android:id="@+id/checkRight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="8dp"
+        android:checked="true"
+        android:text="右声道"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/checkLeft" />
+
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -224,5 +235,16 @@
         android:layout_marginTop="2dp"
         app:layout_constraintStart_toEndOf="@+id/textView13"
         app:layout_constraintTop_toBottomOf="@+id/tvRemoteDeviceName" />
+
+    <CheckBox
+        android:id="@+id/checkLeft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="8dp"
+        android:checked="true"
+        android:text="左声道"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/btnDisconnect" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

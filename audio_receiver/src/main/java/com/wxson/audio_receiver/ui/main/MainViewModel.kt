@@ -40,6 +40,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     val deviceAdapter: DeviceAdapter
     private var remoteDevice: WifiP2pDevice? = null
     private var pcmPlayer: PcmPlayer? = null
+    var leftGain = 1.0f
+    var rightGain = 1.0f
 
     //region LiveData
     private val msgLiveData = MutableLiveData<ViewModelMsg>()
@@ -83,11 +85,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     override fun onCleared() {
-        val msg = Message()
-        msg.what = MsgType.LOCAL_MSG.ordinal
-        msg.obj = Val.msgStopRunnable
-        if (connectThread.isAlive)
-            connectRunnable.connectThreadHandler.sendMessage(msg)
+        if (this::connectThread.isInitialized) {
+            if (connectThread.isAlive){
+                val msg = Message()
+                msg.what = MsgType.LOCAL_MSG.ordinal
+                msg.obj = Val.msgStopRunnable
+                connectRunnable.connectThreadHandler.sendMessage(msg)
+            }
+        }
         app.unregisterReceiver(receiver)
         super.onCleared()
     }
@@ -199,10 +204,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private fun playPcmData(pcmTransferData: PcmTransferData) {
         if (pcmPlayer == null) {
-            pcmPlayer = PcmPlayer(pcmTransferData.sampleRateInHz)
+            pcmPlayer = PcmPlayer(pcmTransferData.sampleRateInHz, leftGain, rightGain)
         }
         pcmPlayer?.writePcmData(pcmTransferData.pcmData)
-//        Log.d(thisTag, "playPcmData")
     }
 
     private fun sendMsgLiveData(viewModelMsg: ViewModelMsg) {
@@ -244,6 +248,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_WIFI_P2P_INFO.ordinal, null))
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_CONNECT_STATUS.ordinal, false))
         sendMsgLiveData(ViewModelMsg(MsgType.SHOW_REMOTE_DEVICE_INFO.ordinal, null))
+        pcmPlayer = null
     }
 
     override fun onSelfDeviceAvailable(selfDevice: WifiP2pDevice) {

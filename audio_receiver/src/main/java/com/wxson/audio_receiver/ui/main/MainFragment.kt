@@ -1,6 +1,8 @@
 package com.wxson.audio_receiver.ui.main
 
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.os.Bundle
@@ -36,7 +38,12 @@ class MainFragment : Fragment(), View.OnClickListener {
     private var imgConnectStatus: ImageView? = null
     private var rvDeviceList: RecyclerView? = null
     private var btnDisconnect: Button? = null
+    private var checkLeft: CheckBox? = null
+    private var checkRight: CheckBox? = null
     private lateinit var loadingDialog: LoadingDialog
+    private lateinit var preferences: SharedPreferences
+    private lateinit var editor: SharedPreferences.Editor
+    private var soundChannelSwitch: Int = 0b11
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -69,6 +76,12 @@ class MainFragment : Fragment(), View.OnClickListener {
             rvDeviceList = findViewById(R.id.rvDeviceList)
             // Button
             btnDisconnect = findViewById(R.id.btnDisconnect)
+            // SharedPreferences
+            preferences = context.getSharedPreferences("wifi_p2p", Context.MODE_PRIVATE)
+            editor = preferences.edit()
+            //CheckBox
+            checkLeft = findViewById(R.id.checkLeft)
+            checkRight = findViewById(R.id.checkRight)
             // LoadingDialog
             loadingDialog = LoadingDialog(this.context)
         }
@@ -86,6 +99,27 @@ class MainFragment : Fragment(), View.OnClickListener {
         // set adapter
         rvDeviceList?.adapter = viewModel.deviceAdapter
         rvDeviceList?.layoutManager = LinearLayoutManager(this.context)
+        // set checkBox
+        checkLeft?.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+            run {
+                setLeftVolume(isChecked)    //设定左声道音量
+                val binarySwitch: Int = if (isChecked) 0b10 else 0b00
+                soundChannelSwitch = soundChannelSwitch.and(0b01).or(binarySwitch)
+                editor.putInt("soundChannelSwitch",soundChannelSwitch)
+                editor.apply()
+            }
+        }
+        checkRight?.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+            run {
+                setRightVolume(isChecked)   ////设定右声道音量
+                val binarySwitch: Int = if (isChecked) 0b01 else 0b00
+                soundChannelSwitch = soundChannelSwitch.and(0b10).or(binarySwitch)
+                editor.putInt("soundChannelSwitch",soundChannelSwitch)
+                editor.apply()
+            }
+        }
+        soundChannelSwitch = preferences.getInt("soundChannelSwitch", 0b11)
+        setCheckBox(soundChannelSwitch)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -171,6 +205,25 @@ class MainFragment : Fragment(), View.OnClickListener {
             tvRemoteDeviceName?.text = remoteDevice.deviceName
             tvRemoteDeviceAdress?.text = remoteDevice.deviceAddress
         }
+    }
+
+    private fun setLeftVolume(isChecked: Boolean) {
+        viewModel.leftGain = if (isChecked) 1.0f else 0.0f
+    }
+
+    private fun setRightVolume(isChecked: Boolean) {
+        viewModel.rightGain = if (isChecked) 1.0f else 0.0f
+    }
+
+    //根据soundChannelSwitch设置checkLeft checkRight
+    private fun setCheckBox(soundChannelSwitch: Int) {
+        var isChecked: Boolean = ((soundChannelSwitch and 0b10) != 0)
+        checkLeft?.isChecked = isChecked
+        setLeftVolume(isChecked)
+
+        isChecked = ((soundChannelSwitch and 0b01) != 0)
+        checkRight?.isChecked = isChecked
+        setRightVolume(isChecked)
     }
 
 }
