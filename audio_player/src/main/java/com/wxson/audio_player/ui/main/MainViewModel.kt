@@ -33,10 +33,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val receiver: BroadcastReceiver
     private val dummyPlayerRunnable: DummyPlayerRunnable
     private val playThread: Thread
-    private val isBio = false
 
-    @SuppressLint("StaticFieldLeak")
-    var playerIntentService: PlayerIntentService? = null
+//    @SuppressLint("StaticFieldLeak")
+//    var playerIntentService: PlayerIntentService? = null
     @SuppressLint("StaticFieldLeak")
     var connectIntentService: ConnectIntentService? = null
 
@@ -46,20 +45,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             Log.i(thisTag, "onServiceConnected")
-            if (isBio) {
-                val binder = service as PlayerIntentService.MyBinder
-                playerIntentService = binder.playerIntentService
-                playerIntentService?.setMessageListener(messageListener)
-                playerIntentService?.queue = synchronousQueue
-                PlayerIntentService.startActionTcp(app)
-            } else {
-                val binder = service as ConnectIntentService.MyBinder
-                connectIntentService = binder.connectIntentService
-                connectIntentService?.setMessageListener(messageListener)
-                val intent = Intent(app, ConnectIntentService::class.java)
-                intent.action = ACTION_TCP_IP
-                app.startService(intent)
-            }
+            val binder = service as ConnectIntentService.MyBinder
+            connectIntentService = binder.connectIntentService
+            connectIntentService?.setMessageListener(messageListener)
+            val intent = Intent(app, ConnectIntentService::class.java)
+            intent.action = ACTION_TCP_IP
+            app.startService(intent)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -77,27 +68,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
                     Util.sendLiveData(connectStatusLiveData, true)
                 }
                 Val.msgClientDisconnectRequest -> {
-                    if (isBio) {
-                        // 向客户端发出应答，客户端收到应答后关闭socket线程
-                        val msg1 = Message()
-                        msg1.what = Val.msgCodeByteArray
-                        msg1.obj = Val.msgDisconnectReply.toByteArray()
-                        playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg1)
-                        Thread.sleep(300)
-                        // 变更连接标识
-                        Util.sendLiveData(connectStatusLiveData, false)
-                        clientConnected = false
-                        Log.d(thisTag, "messageListener.messageListener clientConnected = false")
-                        playerIntentService?.serverRunnable?.isClientSocketOn = false
-                        val msg2 = Message()
-                        msg2.what = Val.msgThreadInterrupted
-                        msg2.obj = null
-                        playerIntentService?.serverRunnable?.outputHandler?.sendMessage(msg2)
-                        playerIntentService?.serverRunnable?.interruptThread()
-                    } else {
-                        // 变更连接标识
-                        Util.sendLiveData(connectStatusLiveData, false)
-                    }
+                    // 变更连接标识
+                    Util.sendLiveData(connectStatusLiveData, false)
                 }
                 "remote_cmd_pausePlay" -> {
                     this@MainViewModel.pause()
@@ -142,16 +114,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "init")
         wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
+        removeGroup()
         createGroup()       //建立p2p组，否则无法取得hostIpAddress，ServerSocketChannel无法绑定本机ip
         // set a fixed name to the self device used in wifi p2p group
         setDeviceName(app.getString(R.string.app_name))
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         app.registerReceiver(receiver, getIntentFilter())
-        if ( isBio) {
-            bindPlayerIntentService()
-        } else {
-            bindConnectIntentService()
-        }
+        bindConnectIntentService()
         // 启动PlayThread
         dummyPlayerRunnable = DummyPlayerRunnable()
         playThread = Thread(dummyPlayerRunnable)
@@ -160,16 +129,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     override fun onCleared() {
         Log.i(thisTag, "onCleared")
-        if(isTcpSocketServiceOn){
-            playerIntentService?.stopTcpSocketService()
-        }
-        if (isBio) {
-            unbindPlayerIntentService()
-            playerIntentService = null
-        } else {
-            unbindConnectIntentService()
-            connectIntentService = null
-        }
+//        if (isTcpSocketServiceOn) {
+//            playerIntentService?.stopTcpSocketService()
+//        }
+        unbindConnectIntentService()
+        connectIntentService = null
         unregisterBroadcastReceiver()
         removeGroup()
         dummyPlayerRunnable.threadHandler.looper.quitSafely()
@@ -190,10 +154,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
 
         if (wifiP2pInfo.groupFormed) {
-            Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
+//            Util.sendLiveData(localMsgLiveData, "group is formed")
         } else {
             Log.i(thisTag, "未建组！")
-            Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
+//            Util.sendLiveData(localMsgLiveData, "group is not formed")
             Util.sendLiveData(localMsgLiveData, "未建组！")
         }
         if (!wifiP2pInfo.isGroupOwner) {
@@ -222,6 +186,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     //region public methods
     fun createGroup() {
+        Log.i(thisTag, "createGroup()")
         if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.i(thisTag, "需要申请ACCESS_FINE_LOCATION权限")
             // Do not have permissions, request them now
@@ -231,7 +196,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         wifiP2pManager.createGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "createGroup onSuccess")
-                Util.sendLiveData(localMsgLiveData, "createGroup onSuccess")
+                Util.sendLiveData(localMsgLiveData, "group is formed")
             }
 
             override fun onFailure(reason: Int) {
@@ -242,12 +207,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     }
 
     fun removeGroup() {
+        Log.i(thisTag, "removeGroup()")
         wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "removeGroup onSuccess")
                 Util.sendLiveData(connectStatusLiveData, false)
                 // notify MediaCodecCallback of connect status
-                Util.sendLiveData(localMsgLiveData, "removeGroup onSuccess")
+                Util.sendLiveData(localMsgLiveData, "group is not formed")
             }
 
             override fun onFailure(reason: Int) {
@@ -298,12 +264,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     //endregion
 
     //region private methods
-    private fun unbindPlayerIntentService() {
-        Log.i(thisTag, "unbindPlayerIntentService")
-        if (playerIntentService != null) {
-            app.unbindService(serviceConnection)
-        }
-    }
 
     private fun unbindConnectIntentService() {
         Log.i(thisTag, "unbindConnectIntentService")
@@ -312,11 +272,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private fun unregisterBroadcastReceiver() {
         app.unregisterReceiver(receiver)
-    }
-
-    private fun bindPlayerIntentService() {
-        val intent = Intent(app, PlayerIntentService::class.java)
-        app.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     private fun bindConnectIntentService() {

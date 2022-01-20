@@ -10,7 +10,7 @@ class DummyPlayerRunnable : Runnable {
     lateinit var threadHandler: PlayThreadHandler
 
     override fun run() {
-        Log.i(thisTag, "run")
+        Log.i(thisTag, "run thread:${Thread.currentThread().name}")
         // 为当前线程初始化Looper
         Looper.prepare()
         threadHandler = PlayThreadHandler()

@@ -16,12 +16,16 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.nio.charset.Charset
+import java.util.concurrent.SynchronousQueue
 import kotlin.concurrent.thread
 
 // IntentService can perform TCP and UDP protocol
 const val ACTION_TCP_IP = "com.wxson.audio_player.ui.main.action.TCP_IP"
 const val ACTION_UDP = "com.wxson.audio_player.ui.main.action.UDP"
 private lateinit var messageListener: IMessageListener
+@Volatile
+var clientConnected = false
+val synchronousQueue: SynchronousQueue<PcmTransferData> = SynchronousQueue<PcmTransferData>(true)
 
 /**
  * An [IntentService] subclass for handling asynchronous task requests in

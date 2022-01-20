@@ -76,12 +76,12 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             imageBtnPause.setOnClickListener(this@MainFragment)
             imageBtnMute = findViewById(R.id.imageBtnMute)
             imageBtnMute.setOnClickListener(this@MainFragment)
-
             imageConnectStatus = findViewById(R.id.imageConnected)
         }
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        Log.d(runningTag, "onActivityCreated")
         super.onActivityCreated(savedInstanceState)
         val androidViewModelFactory = ViewModelProvider.AndroidViewModelFactory.getInstance(this.requireActivity().application)
         viewModel = ViewModelProvider(this, androidViewModelFactory).get(MainViewModel::class.java)
@@ -91,11 +91,11 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         // registers observer for information from viewModel
         val localMsgObserver: Observer<String> = Observer { localMsg ->
             when (localMsg) {
-                "createGroup onSuccess" -> {
+                "group is formed" -> {
                     btnCreateGroup.isEnabled = false
                     btnDeleteGroup.isEnabled = true
                 }
-                "removeGroup onSuccess" -> {
+                "group is not formed" -> {
                     btnCreateGroup.isEnabled = true
                     btnDeleteGroup.isEnabled = false
                 }
@@ -113,6 +113,9 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         setButton(playerContext!!.getCurrentState())
     }
 
+    override fun onStart() {
+        super.onStart()
+    }
 
     private fun connectStatusHandler(isConnected: Boolean) {
         if (isConnected){
