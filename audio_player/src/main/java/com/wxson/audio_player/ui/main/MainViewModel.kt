@@ -2,7 +2,6 @@ package com.wxson.audio_player.ui.main
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Application
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.wifi.p2p.WifiP2pDevice
@@ -14,9 +13,10 @@ import android.os.Looper
 import android.os.Message
 import android.util.Log
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import com.wxson.audio_player.MyApplication
 import com.wxson.audio_player.R
 import com.wxson.p2p_comm.*
 import com.wxson.p2p_comm.DirectBroadcastReceiver.Companion.getIntentFilter
@@ -24,18 +24,15 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.net.InetAddress
 
-class MainViewModel(application: Application) : AndroidViewModel(application), ChannelListener, IDirectActionListener {
+class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
 
     private val thisTag = this.javaClass.simpleName
-    private val app = application
     private val wifiP2pManager: WifiP2pManager
     private val channel: WifiP2pManager.Channel
     private val receiver: BroadcastReceiver
     private val dummyPlayerRunnable: DummyPlayerRunnable
     private val playThread: Thread
 
-//    @SuppressLint("StaticFieldLeak")
-//    var playerIntentService: PlayerIntentService? = null
     @SuppressLint("StaticFieldLeak")
     var connectIntentService: ConnectIntentService? = null
 
@@ -48,9 +45,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
             val binder = service as ConnectIntentService.MyBinder
             connectIntentService = binder.connectIntentService
             connectIntentService?.setMessageListener(messageListener)
-            val intent = Intent(app, ConnectIntentService::class.java)
+            val intent = Intent(MyApplication.context, ConnectIntentService::class.java)
             intent.action = ACTION_TCP_IP
-            app.startService(intent)
+            MyApplication.context.startService(intent)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -112,14 +109,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     init {
         Log.i(thisTag, "init")
-        wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
-        channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
-        removeGroup()
+        wifiP2pManager =  MyApplication.context.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
+        channel = wifiP2pManager.initialize(MyApplication.context, Looper.getMainLooper(), this)
         createGroup()       //建立p2p组，否则无法取得hostIpAddress，ServerSocketChannel无法绑定本机ip
         // set a fixed name to the self device used in wifi p2p group
-        setDeviceName(app.getString(R.string.app_name))
+        setDeviceName(MyApplication.context.getString(R.string.app_name))
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
-        app.registerReceiver(receiver, getIntentFilter())
+        MyApplication.context.registerReceiver(receiver, getIntentFilter())
         bindConnectIntentService()
         // 启动PlayThread
         dummyPlayerRunnable = DummyPlayerRunnable()
@@ -154,10 +150,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "onConnectionInfoAvailable=$wifiP2pInfo")
 
         if (wifiP2pInfo.groupFormed) {
-//            Util.sendLiveData(localMsgLiveData, "group is formed")
+            Util.sendLiveData(localMsgLiveData, "group is formed")
         } else {
             Log.i(thisTag, "未建组！")
-//            Util.sendLiveData(localMsgLiveData, "group is not formed")
+            Util.sendLiveData(localMsgLiveData, "group is not formed")
             Util.sendLiveData(localMsgLiveData, "未建组！")
         }
         if (!wifiP2pInfo.isGroupOwner) {
@@ -187,7 +183,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     //region public methods
     fun createGroup() {
         Log.i(thisTag, "createGroup()")
-        if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(MyApplication.context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.i(thisTag, "需要申请ACCESS_FINE_LOCATION权限")
             // Do not have permissions, request them now
             Util.sendLiveData(localMsgLiveData, "需要申请ACCESS_FINE_LOCATION权限")
@@ -225,7 +221,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     fun play(fileName: String) {
         Log.i(thisTag, "play()")
-        val pathName: String = app.cacheDir.path
+        val pathName: String = MyApplication.context.cacheDir.path
         dummyPlayerRunnable.threadHandler.sendMessage(setMsg(
             MsgType.DUMMY_PLAYER_PLAY.ordinal,
             "$pathName/$fileName"))
@@ -267,15 +263,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
 
     private fun unbindConnectIntentService() {
         Log.i(thisTag, "unbindConnectIntentService")
-        if (connectIntentService != null) app.unbindService(serviceConnection)
+        if (connectIntentService != null) MyApplication.context.unbindService(serviceConnection)
     }
 
     private fun unregisterBroadcastReceiver() {
-        app.unregisterReceiver(receiver)
+        MyApplication.context.unregisterReceiver(receiver)
     }
 
     private fun bindConnectIntentService() {
-        app.bindService(Intent(app, ConnectIntentService::class.java),
+        MyApplication.context.bindService(Intent(MyApplication.context, ConnectIntentService::class.java),
             serviceConnection,
             Context.BIND_AUTO_CREATE)
     }

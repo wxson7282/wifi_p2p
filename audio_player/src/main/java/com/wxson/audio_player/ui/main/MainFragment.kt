@@ -14,7 +14,6 @@ import androidx.appcompat.content.res.AppCompatResources.getDrawable
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
 import com.wxson.audio_player.R
 import com.wxson.audio_player.ui.main.state.*
 import pub.devrel.easypermissions.EasyPermissions
@@ -45,25 +44,24 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         fun newInstance() = MainFragment()
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.main_fragment, container, false)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.d(runningTag, "onCreate")
+        Log.i(runningTag, "onCreate")
         super.onCreate(savedInstanceState)
         retainInstance = true       // 横竖屏切换时不销毁fragment
     }
 
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        Log.i(runningTag, "onCreateView")
+        return inflater.inflate(R.layout.main_fragment, container, false)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        Log.i(runningTag, "onViewCreated")
         super.onViewCreated(view, savedInstanceState)
         view.apply {
-            findViewById<Button>(R.id.btnTest).setOnClickListener{
-                findNavController().navigate(R.id.action_MainFragment_to_SecondFragment)
-            }
             btnCreateGroup = findViewById(R.id.btnCreateGroup)
             btnCreateGroup.setOnClickListener(this@MainFragment)
             btnDeleteGroup = findViewById(R.id.btnDeleteGroup)
@@ -81,11 +79,9 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        Log.d(runningTag, "onActivityCreated")
         super.onActivityCreated(savedInstanceState)
-        val androidViewModelFactory = ViewModelProvider.AndroidViewModelFactory.getInstance(this.requireActivity().application)
-        viewModel = ViewModelProvider(this, androidViewModelFactory).get(MainViewModel::class.java)
-
+        Log.i(runningTag, "onActivityCreated")
+        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
         //申请权限
         requestLocationPermission()
         // registers observer for information from viewModel
@@ -111,10 +107,6 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             playerContext!!.setCurrentState(StoppedState())       //设置初始状态
         }
         setButton(playerContext!!.getCurrentState())
-    }
-
-    override fun onStart() {
-        super.onStart()
     }
 
     private fun connectStatusHandler(isConnected: Boolean) {
