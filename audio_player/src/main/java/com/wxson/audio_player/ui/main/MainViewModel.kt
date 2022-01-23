@@ -20,8 +20,6 @@ import com.wxson.audio_player.MyApplication
 import com.wxson.audio_player.R
 import com.wxson.p2p_comm.*
 import com.wxson.p2p_comm.DirectBroadcastReceiver.Companion.getIntentFilter
-import java.lang.reflect.InvocationTargetException
-import java.lang.reflect.Method
 import java.net.InetAddress
 
 class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
@@ -113,7 +111,7 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
         channel = wifiP2pManager.initialize(MyApplication.context, Looper.getMainLooper(), this)
         createGroup()       //建立p2p组，否则无法取得hostIpAddress，ServerSocketChannel无法绑定本机ip
         // set a fixed name to the self device used in wifi p2p group
-        setDeviceName(MyApplication.context.getString(R.string.app_name))
+        wifiP2pManager.setDeviceName(channel, MyApplication.context.getString(R.string.app_name))
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         MyApplication.context.registerReceiver(receiver, getIntentFilter())
         bindConnectIntentService()
@@ -274,38 +272,6 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
         MyApplication.context.bindService(Intent(MyApplication.context, ConnectIntentService::class.java),
             serviceConnection,
             Context.BIND_AUTO_CREATE)
-    }
-
-    private fun setDeviceName(deviceName: String) {
-        try {
-            val paramTypes0 = WifiP2pManager.Channel::class.java
-            val paramTypes1 = String::class.java
-            val paramTypes2 = WifiP2pManager.ActionListener::class.java
-
-            val setDeviceName: Method = wifiP2pManager.javaClass.getMethod(
-                "setDeviceName", paramTypes0, paramTypes1, paramTypes2
-            )
-            setDeviceName.isAccessible = true
-            setDeviceName.invoke(wifiP2pManager, channel,
-                deviceName,
-                object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        Log.i(thisTag, "setDeviceName succeeded")
-                    }
-
-                    override fun onFailure(reason: Int) {
-                        Log.i(thisTag, "setDeviceName failed")
-                    }
-                })
-        } catch (e: NoSuchMethodException) {
-            e.printStackTrace()
-        } catch (e: IllegalAccessException) {
-            e.printStackTrace()
-        } catch (e: IllegalArgumentException) {
-            e.printStackTrace()
-        } catch (e: InvocationTargetException) {
-            e.printStackTrace()
-        }
     }
 
     private fun setMsg(msgWhat: Int, msgObj: Any) : Message {

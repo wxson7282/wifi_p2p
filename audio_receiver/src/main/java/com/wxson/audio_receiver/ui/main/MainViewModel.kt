@@ -70,6 +70,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
         Log.i(thisTag, "init")
         wifiP2pManager =  app.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         channel = wifiP2pManager.initialize(app, Looper.getMainLooper(), this)
+        // set a fixed name to the self device used in wifi p2p group
+        wifiP2pManager.setDeviceName(channel, app.getString(R.string.app_name))
+
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         app.registerReceiver(receiver, DirectBroadcastReceiver.getIntentFilter())
         wifiP2pDeviceList.clear()
@@ -212,6 +215,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), C
     private fun sendMsgLiveData(viewModelMsg: ViewModelMsg) {
         Util.sendLiveData(msgLiveData, viewModelMsg)
     }
+
     //endregion
 
     //region wifi p2p events

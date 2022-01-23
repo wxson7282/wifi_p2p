@@ -54,6 +54,7 @@ class DecoderCallback(extractor: MediaExtractor, audioTrack: AudioTrack) {
 //                        Log.d(thisTag, "synchronousQueue.put(PcmTransferData(sampleRateInHz, pcmData, frameCount++))")
                         synchronousQueue.put(PcmTransferData(sampleRateInHz, pcmData, frameCount++))   // 生产数据
                     }
+//                    audioTrack.write(pcmData, 0, pcmData.size)
                     codec.releaseOutputBuffer(bufferIndex, false)
                 }
             } catch (e: InterruptedException ) {
