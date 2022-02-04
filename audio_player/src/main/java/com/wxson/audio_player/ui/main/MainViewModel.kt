@@ -30,6 +30,7 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
     private val receiver: BroadcastReceiver
     private val dummyPlayerRunnable: DummyPlayerRunnable
     private val playThread: Thread
+    val clientList = ArrayList<String>()
 
     @SuppressLint("StaticFieldLeak")
     var connectIntentService: ConnectIntentService? = null
@@ -54,17 +55,20 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
     }
 
     private val messageListener = object : IMessageListener {
-
+        @SuppressLint("NotifyDataSetChanged")
         override fun onRemoteMsgArrived(arrivedString: String, clientInetAddress: InetAddress) {
             Log.i(thisTag, "onRemoteMsgArrived")
             Util.sendLiveData(localMsgLiveData, "arrivedString:$arrivedString clientInetAddress:$clientInetAddress")
             when (arrivedString) {
                 Val.msgClientConnected -> {
-                    Util.sendLiveData(connectStatusLiveData, true)
+                    // add new client to client list
+                    clientList.add(clientInetAddress.hostAddress)
+                    Util.sendLiveData(localMsgLiveData, "clientListChanged")
                 }
                 Val.msgClientDisconnectRequest -> {
-                    // 变更连接标识
-                    Util.sendLiveData(connectStatusLiveData, false)
+                    // search this client and delete it from client list
+                    clientList.removeIf{it == clientInetAddress.hostAddress }
+                    Util.sendLiveData(localMsgLiveData, "clientListChanged")
                 }
                 "remote_cmd_pausePlay" -> {
                     this@MainViewModel.pause()
@@ -99,10 +103,6 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
         return localMsgLiveData
     }
 
-    private var connectStatusLiveData = MutableLiveData<Boolean>()
-    fun getConnectStatus(): LiveData<Boolean> {
-        return connectStatusLiveData
-    }
     //endregion
 
     init {
@@ -112,6 +112,9 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
         createGroup()       //建立p2p组，否则无法取得hostIpAddress，ServerSocketChannel无法绑定本机ip
         // set a fixed name to the self device used in wifi p2p group
         wifiP2pManager.setDeviceName(channel, MyApplication.context.getString(R.string.app_name))
+        //
+        clientList.clear()
+        //
         receiver = DirectBroadcastReceiver(wifiP2pManager, channel, this)
         MyApplication.context.registerReceiver(receiver, getIntentFilter())
         bindConnectIntentService()
@@ -123,9 +126,6 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
 
     override fun onCleared() {
         Log.i(thisTag, "onCleared")
-//        if (isTcpSocketServiceOn) {
-//            playerIntentService?.stopTcpSocketService()
-//        }
         unbindConnectIntentService()
         connectIntentService = null
         unregisterBroadcastReceiver()
@@ -162,7 +162,7 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
 
     override fun onDisconnection() {
         Log.i(thisTag, "onDisconnection")
-        connectStatusLiveData.postValue(false)
+        clearClientList()
     }
 
     override fun onSelfDeviceAvailable(selfDevice: WifiP2pDevice) {
@@ -205,7 +205,7 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
         wifiP2pManager.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.i(thisTag, "removeGroup onSuccess")
-                Util.sendLiveData(connectStatusLiveData, false)
+                clearClientList()
                 // notify MediaCodecCallback of connect status
                 Util.sendLiveData(localMsgLiveData, "group is not formed")
             }
@@ -279,6 +279,12 @@ class MainViewModel : ViewModel(), ChannelListener, IDirectActionListener {
         msg.what = msgWhat
         msg.obj = msgObj
         return msg
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun clearClientList() {
+        clientList.clear()
+        Util.sendLiveData(localMsgLiveData, "clientListChanged")
     }
     //endregion
 }

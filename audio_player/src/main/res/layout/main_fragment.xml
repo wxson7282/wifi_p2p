@@ -5,7 +5,8 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.main.MainFragment">
+    tools:context=".ui.main.MainFragment"
+    tools:ignore="ContentDescription">
 
     <TextView
         android:id="@+id/message"
@@ -44,18 +45,8 @@
         android:layout_marginTop="24dp"
         android:src="@drawable/ic_media_play_light"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnCreateGroup" />
-
-<!--    <Button-->
-<!--        android:id="@+id/btnTest"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_marginStart="16dp"-->
-<!--        android:layout_marginBottom="16dp"-->
-<!--        android:enabled="false"-->
-<!--        android:text="测试"-->
-<!--        app:layout_constraintBottom_toBottomOf="parent"-->
-<!--        app:layout_constraintStart_toStartOf="parent" />-->
+        app:layout_constraintTop_toBottomOf="@+id/btnCreateGroup"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <ImageButton
         android:id="@+id/imageBtnStop"
@@ -65,7 +56,8 @@
         android:layout_marginTop="24dp"
         android:src="@drawable/ic_media_stop_light"
         app:layout_constraintStart_toEndOf="@id/imageBtnPlay"
-        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup" />
+        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <ImageButton
         android:id="@+id/imageBtnPause"
@@ -75,7 +67,8 @@
         android:layout_marginTop="24dp"
         android:src="@drawable/ic_media_pause_light"
         app:layout_constraintStart_toEndOf="@+id/imageBtnStop"
-        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup" />
+        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <ImageButton
         android:id="@+id/imageBtnMute"
@@ -85,7 +78,8 @@
         android:layout_marginTop="24dp"
         android:src="@drawable/ic_mute_fill"
         app:layout_constraintStart_toEndOf="@+id/imageBtnPause"
-        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup" />
+        app:layout_constraintTop_toBottomOf="@+id/btnDeleteGroup"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <ImageView
         android:id="@+id/imageConnected"
@@ -96,5 +90,17 @@
         android:src="@drawable/ic_disconnected"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_clients"
+        android:layout_width="0dp"
+        android:layout_height="200dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@color/mr_cast_progressbar_background_light"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageBtnPlay" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

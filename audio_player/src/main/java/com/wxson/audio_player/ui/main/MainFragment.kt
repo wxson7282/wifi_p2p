@@ -1,19 +1,18 @@
 package com.wxson.audio_player.ui.main
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.Toast
-import androidx.appcompat.content.res.AppCompatResources.getDrawable
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.wxson.audio_player.R
 import com.wxson.audio_player.ui.main.state.*
 import pub.devrel.easypermissions.EasyPermissions
@@ -29,6 +28,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private lateinit var imageBtnPause: ImageButton
     private lateinit var imageBtnStop: ImageButton
     private lateinit var imageBtnMute: ImageButton
+    private lateinit var rvClientList: RecyclerView
     private var playerContext: PlayerContext? = null
     private val playingBtnStates: Int = 0b0111
     private val stoppedBtnStates: Int = 0b1000
@@ -39,6 +39,24 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
     private val muteEffective: Int = 0b01
     private var reservedBtnStates: Int = 0
     private var reservedBtnEffectiveStates: Int = 0
+    // registers observer for information from viewModel
+    @SuppressLint("NotifyDataSetChanged")
+    private val localMsgObserver: Observer<String> = Observer { localMsg ->
+        when (localMsg) {
+            "group is formed" -> {
+                btnCreateGroup.isEnabled = false
+                btnDeleteGroup.isEnabled = true
+            }
+            "group is not formed" -> {
+                btnCreateGroup.isEnabled = true
+                btnDeleteGroup.isEnabled = false
+            }
+            "clientListChanged" -> {
+                rvClientList.adapter?.notifyDataSetChanged()
+            }
+        }
+        showMsg(localMsg)
+    }
 
     companion object {
         fun newInstance() = MainFragment()
@@ -75,6 +93,7 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
             imageBtnMute = findViewById(R.id.imageBtnMute)
             imageBtnMute.setOnClickListener(this@MainFragment)
             imageConnectStatus = findViewById(R.id.imageConnected)
+            rvClientList = findViewById(R.id.rv_clients)
         }
     }
 
@@ -82,40 +101,22 @@ class MainFragment : Fragment(), EasyPermissions.PermissionCallbacks, View.OnCli
         super.onActivityCreated(savedInstanceState)
         Log.i(runningTag, "onActivityCreated")
         viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+        // set adapter
+        rvClientList.adapter = ClientsAdapter(viewModel.clientList)
+        rvClientList.layoutManager = LinearLayoutManager(this.context)
+
+
         //申请权限
         requestLocationPermission()
-        // registers observer for information from viewModel
-        val localMsgObserver: Observer<String> = Observer { localMsg ->
-            when (localMsg) {
-                "group is formed" -> {
-                    btnCreateGroup.isEnabled = false
-                    btnDeleteGroup.isEnabled = true
-                }
-                "group is not formed" -> {
-                    btnCreateGroup.isEnabled = true
-                    btnDeleteGroup.isEnabled = false
-                }
-            }
-            showMsg(localMsg)
-        }
+        // add observer to liveData
         viewModel.getLocalMsg().observe(viewLifecycleOwner, localMsgObserver)
-        val connectStatusObserver: Observer<Boolean> = Observer { isConnected -> connectStatusHandler(isConnected!!) }
-        viewModel.getConnectStatus().observe(viewLifecycleOwner, connectStatusObserver)
+
         // 新建fragment时初始状态为StoppedState
         if (playerContext == null) {
             playerContext = PlayerContext(viewModel)            //定义环境角色
             playerContext!!.setCurrentState(StoppedState())       //设置初始状态
         }
         setButton(playerContext!!.getCurrentState())
-    }
-
-    private fun connectStatusHandler(isConnected: Boolean) {
-        if (isConnected){
-            imageConnectStatus.setImageDrawable(getDrawable(requireContext(), R.drawable.ic_connected))
-        }
-        else{
-            imageConnectStatus.setImageDrawable(getDrawable(requireContext(), R.drawable.ic_disconnected))
-        }
     }
 
     //申请位置权限
