@@ -101,3 +101,18 @@ wifi p2p连接建立后，这个IntentService主要负责实现非阻塞的socke
 为了减少if-else逻辑，对于本地音频播放器按钮采用状态模式处理，缺点是增加了不少状态类。
 
 ## 接收器(客户端)
+### ConnectRunnable
+客户端socket线程的执行部分，用NIO机制实现信息接收和发送。这里用到两个线程：
+- ConnectRunnable所在的主线程，用ThreadHandler接收来自MainViewModel的文字消息，经NIO发送给服务器。
+- 读取服务器信息的inputThread，完成服务器信息的解析，经过MainViewModel送达消费者。
+### PcmPlayer
+这是来自服务器的音频数据的消费者，用AudioTrack播放音频。
+该类初始化时，可以控制播放器的左右声道。
+### MainViewModel
+同服务器MainViewModel功能相似。
+
+## 可能改进的方向
+- 使用更高效的AIO代替NIO，但是低版本android不支持AIO，考虑兼容范围目前只能使用NIO。
+- 由于数据传输过程使用各种buffer，每个客户端播放的音频会有不同的时延，因此需要一种同步机制以控制音频播放时延。
+
+如有问题、BUG、指摘，请联系：wxson@126.com
