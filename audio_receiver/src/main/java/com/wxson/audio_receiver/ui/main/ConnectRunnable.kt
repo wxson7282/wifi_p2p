@@ -80,7 +80,7 @@ class ConnectRunnable(private val mainHandler: Handler, private val serverIp: St
                                 if (!cacheByte(4)) continue       //缓存包长度第四字节
                                 //包头处理完
                                 //包处理
-                                //从缓冲区取得messageSizeByteArray
+                                //从缓冲区取得包长度字节
                                 sizeByteArray[0] = cacheBuff.get(1)
                                 sizeByteArray[1] = cacheBuff.get(2)
                                 sizeByteArray[2] = cacheBuff.get(3)
