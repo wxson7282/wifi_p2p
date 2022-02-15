@@ -19,7 +19,7 @@ NIO不同于传统的阻塞式socket通信方式，无法使用功能强大的Ob
 粘包拆包问题的发生是NIO数据收发缓冲机制造成的，如果数据包边界超过缓冲区边界，就会发生拆包；如果数据包边界未达到缓冲区边界、且后续数据包也已到达，就会发生粘包。
 服务器输出数据打包的过程很简单，由ConnectIntentService实现，使用SocketChannel.write方法依次把包类型、包长度和数据包写入TCP网络(wifi p2p)。
 客户端接收数据解包的过程稍显复杂，在ConnectRunnable中实现。
-解包过程使用了两个buffer，inputBuff和cacheBuff，inputBuff用于从socketChannel中读取数据。
+解包过程使用了两个buffer，inputBuff(输入区)和cacheBuff(缓存)，inputBuff用于从socketChannel中读取数据。
 由于inputBuff中得到数据包有可能是不完整的，因此需要用cacheBuff缓存数据包，cacheBuff中数据包内容全部收妥后，提交给消费者。
 消费者根据包类型，将数据包解析为文字数据或音频数据。
 用流程图表示比较直观，请参见图：NIO解包流程
@@ -114,6 +114,6 @@ wifi p2p连接建立后，这个IntentService主要负责实现非阻塞的socke
 ## 可能改进的方向
 - 今后使用更高效的AIO代替NIO，但是低版本android不支持AIO，考虑兼容范围目前只能使用NIO。
 - 如果今后线程增加较多，考虑使用协程代替线程。
-- 由于数据传输过程使用各种buffer，每个客户端播放的音频会有不同的时延，因此需要一种同步机制以控制音频播放时延。
+- 由于数据传输过程使用各种buffer，每个客户端播放的音频会有不同的时延，因此需要一种同步机制以控制音频播放时延。也许使用UDP协议有可能减少音频时延。
 
 如有问题、BUG、指摘，请联系：wxson@126.com
