@@ -1,6 +1,6 @@
 # Wifi直连(p2p)一对多音频传输
 本系统由一台播放器（服务器）和多台接收器（客户端）构成一个wifi直连的群组，服务器是群主(GO)，客户端是组员(GC)。
-使用Wifi直连(p2p)实现一对多的系统是很容易实现的。
+使用Wifi直连(p2p)构造一对多的系统是很容易实现的。
 系统构成请参见图：wifi_p2p_一对多数据流程
 上图只画出了音频数据的流程，对于服务器与客户端的文字信息交互没有表示，这部分内容看一下代码就明白了。
 为了确保服务器作为群主(GO)角色出现在群组中，服务器启动时立即主动创立群组。
@@ -26,7 +26,7 @@ NIO不同于传统的阻塞式socket通信方式，无法使用功能强大的Ob
 
 以下对重点模块做一些简单说明。
 
-## 共用模块 p2p_comm
+## 公共模块 p2p_comm
 
 ### PcmTransferData
 这是一个继承了Serializable的数据类，用来表示一帧音频数据。数据产生于服务器的解码器，注入socket，经过wifi p2p，传送到客户端，它包括三个成员：
@@ -41,7 +41,7 @@ NIO不同于传统的阻塞式socket通信方式，无法使用功能强大的Ob
 - WIFI_P2P_PEERS_CHANGED_ACTION
   wifi p2p成员列表发生变化，此时可以请求获得成员列表。
 - WIFI_P2P_DISCOVERY_CHANGED_ACTION
-  wifi p2p的成员搜索发现过程发生变化，由停止转为启动，或者由停止转为启动。
+  wifi p2p的成员搜索发现过程发生变化，由停止转为启动，或者由启动转为停止。
 - WIFI_P2P_CONNECTION_CHANGED_ACTION
   wifi p2p的连接状态发生变化，如果是连接成功状态，可以请求获得连接情报。
 - WIFI_P2P_THIS_DEVICE_CHANGED_ACTION
@@ -73,7 +73,7 @@ wifi p2p连接建立后，这个IntentService主要负责实现非阻塞的socke
 - outputAudioThread音频输出线程，使用同步阻塞队列SynchronousQueue的take()方法取得解码后的PCM数据
   （PCM数据是在DecoderCallback中用SynchronousQueue的put()方法注入同步阻塞队列），打包以后发送给每一个已连接的客户端。
 ### DecoderCallback
-这是MP3音频解码器所需的回调。在PlayThreadHandler中注入解码器。主要相应以下事件：
+这是MP3音频解码器所需的回调。在PlayThreadHandler中将其注入解码器。主要相应以下事件：
 - onInputBufferAvailable，当解码器输入缓存可用时，把MediaExtractor解析后的MP3数据填入解码器输入缓存，再把输入缓存推入解码队列。
 - onOutputBufferAvailable，当解码器输出缓存可用时，从输出缓存中取得解码后的PCM数据。
   PCM数据有两个出路，① 用SynchronousQueue的put()方法注入同步阻塞队列 ② 供本地AudioTrack.write()使用。
@@ -82,12 +82,12 @@ wifi p2p连接建立后，这个IntentService主要负责实现非阻塞的socke
 在本地播放音频所需playThread的Runnable实体，在其中使用Looper，循环调用PlayThreadHandler。
 ### PlayThreadHandler
 接收并执行来自MainViewModel的与本地音频播放有关的各种指令。
-- DUMMY_PLAYER_PLAY
-- DUMMY_PLAYER_PAUSE
-- DUMMY_PLAYER_STOP
-- DUMMY_PLAYER_MUTE
-- DUMMY_PLAYER_RESUME
-- DUMMY_PLAYER_UNMUTE
+- PLAY
+- PAUSE
+- STOP
+- MUTE
+- RESUME
+- UNMUTE
 ### MainViewModel
 安卓体系结构组件之一，集成处理逻辑和数据。主要有以下处理：
 - 建立wifi p2p群组，实例化并注册DirectBroadcastReceiver
@@ -112,7 +112,8 @@ wifi p2p连接建立后，这个IntentService主要负责实现非阻塞的socke
 同服务器MainViewModel功能相似。
 
 ## 可能改进的方向
-- 使用更高效的AIO代替NIO，但是低版本android不支持AIO，考虑兼容范围目前只能使用NIO。
+- 今后使用更高效的AIO代替NIO，但是低版本android不支持AIO，考虑兼容范围目前只能使用NIO。
+- 如果今后线程增加较多，考虑使用协程代替线程。
 - 由于数据传输过程使用各种buffer，每个客户端播放的音频会有不同的时延，因此需要一种同步机制以控制音频播放时延。
 
 如有问题、BUG、指摘，请联系：wxson@126.com
